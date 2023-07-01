@@ -1,5 +1,7 @@
 # Wingman
 
+[![MythXBadge](https://badgen.net/https/api.mythx.io/v1/projects/e07cb2ec-047d-4ae2-8bfe-356a18f00a97/badge/data?cache=300&icon=https://raw.githubusercontent.com/ConsenSys/mythx-github-badge/main/logo_white.svg)](https://docs.mythx.io/dashboard/github-badges)
+
 ##  Decentralized Flight Insurance + Framework
 
 ### Registry
