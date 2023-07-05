@@ -9,7 +9,7 @@ describe("DFIFaucet", function () {
     const DFIFaucet = await ethers.getContractFactory("DFIFaucet");
     const dfiFaucet = await DFIFaucet.deploy(other.address);
     await dfiFaucet.deployed();
-    return { dfiFaucet, owner, nonOwner };
+    return { dfiFaucet, owner, nonOwner, other };
   }
 
   describe("Deployment", function () {
@@ -18,11 +18,11 @@ describe("DFIFaucet", function () {
       assert.ok(dfiFaucet.address);
     });
 
-    it("Should set owner", async function () {
+    it("Should set admin", async function () {
       const { dfiFaucet, owner } = await loadFixture(
         deployDFIFaucetFixture
       );
-      expect(await dfiFaucet.owner()).to.equal(owner.address);
+      expect(await dfiFaucet.hasRole(await dfiFaucet.DEFAULT_ADMIN_ROLE(), owner.address)).to.equal(true);
     });
 
     it("Should set drip amount", async function () {
@@ -38,14 +38,21 @@ describe("DFIFaucet", function () {
       const { dfiFaucet, nonOwner } = await loadFixture(deployDFIFaucetFixture);
       await expect(
         dfiFaucet.connect(nonOwner).setDripAmount(ethers.utils.parseEther("0.1"))
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith(/is missing role/);
     });
 
     it("Should not allow non-owner to withdraw", async function () {
       const { dfiFaucet, nonOwner } = await loadFixture(deployDFIFaucetFixture);
       await expect(
         dfiFaucet.connect(nonOwner).withdraw()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith(/is missing role/);
+    });
+
+    it("Should not allow non-dripper to drip to other", async function () {
+      const { dfiFaucet, other, nonOwner } = await loadFixture(deployDFIFaucetFixture);
+      await expect(
+        dfiFaucet.connect(nonOwner).dripTo(other.address)
+      ).to.be.revertedWith(/is missing role/);
     });
 
     it("Should not allow drip twice", async function () {
@@ -105,6 +112,22 @@ describe("DFIFaucet", function () {
 
       await expect(dfiFaucet.connect(nonOwner).drip())
         .to.changeEtherBalance(nonOwner, ethers.utils.parseEther("0.05"));
+    });
+
+    it("Should drip to other if dripper", async function () {
+      const { dfiFaucet, owner, nonOwner, other } = await loadFixture(
+        deployDFIFaucetFixture
+      );
+
+      await owner.sendTransaction({
+        to: dfiFaucet.address,
+        value: ethers.utils.parseEther("100")
+      });
+
+      await dfiFaucet.grantRole(await dfiFaucet.DRIPPER_ROLE(), nonOwner.address);
+
+      await expect(dfiFaucet.connect(nonOwner).dripTo(other.address))
+        .to.changeEtherBalance(other, ethers.utils.parseEther("0.05"));
     });
 
     it("Should save drip amount", async function () {
