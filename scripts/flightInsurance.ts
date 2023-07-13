@@ -10,24 +10,29 @@ const TRUSTUS_REQUEST_ID = ethers.utils.keccak256(
 async function deploy() {
   const [signer] = await ethers.getSigners();
 
-  const linkToken = LINK_TOKEN.mumbai;
-  const operator = CHAINLINK_OPERATOR.mumbai;
+  const linkToken = LINK_TOKEN.polygon;
+  const operator = CHAINLINK_OPERATOR.polygon;
   const jobId = ethers.utils.toUtf8Bytes("22e206a56dd8483c82186b9016c253df"); // get flight status
 
   const DFIRegistry = await ethers.getContractFactory("DFIRegistry");
   const registry = await upgrades.deployProxy(DFIRegistry, []);
+  console.log(`Registry: ${registry.address}`);
 
   const DFIToken = await ethers.getContractFactory("DFIToken");
   const dfiToken = await upgrades.deployProxy(DFIToken, [registry.address]);
+  console.log(`Token: ${dfiToken.address}`);
 
   const LPWallet = await ethers.getContractFactory("LPWallet");
   const lpWallet = await upgrades.deployProxy(LPWallet, [registry.address]);
+  console.log(`LPWallet: ${lpWallet.address}`);
 
   const FlightDelayMarketFactory = await ethers.getContractFactory("FlightDelayMarketFactory");
   const factory = await FlightDelayMarketFactory.deploy(registry.address);
+  console.log(`Factory: ${factory.address}`);
 
   const FlightStatusOracle = await ethers.getContractFactory("FlightStatusOracle");
   const oracle = await FlightStatusOracle.deploy(linkToken, operator, jobId, registry.address);
+  console.log(`Oracle: ${oracle.address}`);
 
   await Promise.all([
     registry.deployed(),
@@ -39,26 +44,20 @@ async function deploy() {
 
   const FlightInsurance = await ethers.getContractFactory("FlightInsurance");
   const insurance = await upgrades.deployProxy(FlightInsurance, [registry.address]) as FlightInsurance;
+  console.log(`Flight insurance: ${insurance.address}`);
 
   await insurance.deployed();
-  await insurance.setWallet(lpWallet.address);
+  await insurance.setWallet(lpWallet.address).then((tx) => tx.wait());
 
-  await insurance.setIsTrusted(signer.address, true);
-  await insurance.setIsTrusted(API_TRUSTUS_SIGNER, true);
+  await insurance.setIsTrusted(signer.address, true).then((tx) => tx.wait());
+  await insurance.setIsTrusted(API_TRUSTUS_SIGNER, true).then((tx) => tx.wait());
 
   const feeCollector = lpWallet.address;
 
   await registry.setAddresses(
     [1, 2, 3, 4, 5, 100],
     [factory.address, dfiToken.address, lpWallet.address, insurance.address, oracle.address, feeCollector]
-  );
-
-  console.log(`Registry: ${registry.address}`);
-  console.log(`Flight insurance: ${insurance.address}`);
-  console.log(`LPWallet: ${lpWallet.address}`);
-  console.log(`Factory: ${factory.address}`);
-  console.log(`Oracle: ${oracle.address}`);
-  console.log(`Token: ${dfiToken.address}`);
+  ).then((tx: any) => tx.wait());
 }
 
 async function start() {

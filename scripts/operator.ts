@@ -1,19 +1,16 @@
 import { ethers } from "hardhat";
-import { LINK_TOKEN } from "./consts";
+import { LINK_TOKEN, ORACLE_AUTHORIZED_SENDERS } from "./consts";
 
 async function main() {
   const [signer] = await ethers.getSigners();
 
-  const linkToken = LINK_TOKEN.mumbai;
+  const linkToken = LINK_TOKEN.polygon;
 
   const Operator = await ethers.getContractFactory("Operator");
   const operator = await Operator.deploy(linkToken, signer.address);
 
   await operator.deployed();
-  await operator.setAuthorizedSenders([
-    "0x16219a5078aBBEc4aEBb1b88Dc02688E5750Aa3b",
-    "0x82f92e34d031EBd0B89BA95c86eb3D8732fCe3f0",
-  ]);
+  await operator.setAuthorizedSenders(ORACLE_AUTHORIZED_SENDERS.polygon);
 
   console.log(`Operator: ${operator.address}`);
 }

@@ -37,7 +37,7 @@ const config: HardhatUserConfig = {
       url: "https://rpc.ankr.com/polygon_mumbai",
       accounts: [process.env.PRIVATE_KEY!]
     },
-    poly: {
+    polygon: {
       url: "https://polygon-rpc.com/"
     },
     goerli: {
