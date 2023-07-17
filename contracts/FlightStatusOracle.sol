@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import { Chainlink, ChainlinkClient } from "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import "./interfaces/IFlightStatusOracle.sol";
-import "./interfaces/IRegistry.sol";
-import "./utils/RegistryMixin.sol";
+import { IFlightStatusOracle } from "./interfaces/IFlightStatusOracle.sol";
+import { IRegistry } from "./interfaces/IRegistry.sol";
+import { RegistryMixin } from "./utils/RegistryMixin.sol";
 
 contract FlightStatusOracle is IFlightStatusOracle, ChainlinkClient, AccessControl, RegistryMixin {
     event FlightStatusRequested(

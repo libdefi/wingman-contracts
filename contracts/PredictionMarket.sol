@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { ERC2771Context } from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-import "./interfaces/ITokensRepository.sol";
-import "./interfaces/IMarket.sol";
-import "./interfaces/IProduct.sol";
+import { ITokensRepository } from "./interfaces/ITokensRepository.sol";
+import { IMarket } from "./interfaces/IMarket.sol";
+import { IProduct } from "./interfaces/IProduct.sol";
 
-abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771Context {
+abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771Context, Initializable {
     event DecisionRendered(Result result);
     event DecisionPostponed();
     event LiquidityProvided(address provider, uint256 amount);
@@ -17,18 +18,18 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
     event BetWithdrawn(address indexed participant, uint256 amount, bool betYes);
     event RewardWithdrawn(address indexed participant, uint256 amount);
 
-    bytes32 internal immutable _marketId;
-    uint256 internal immutable _uniqueId;
+    bytes32 internal _marketId;
+    uint256 internal _uniqueId;
     DecisionState internal _decisionState;
     Result internal _result;
     uint256 internal _ammConst;
 
-    ITokensRepository internal immutable _tokensRepo;
+    ITokensRepository internal _tokensRepo;
     FinalBalance internal _finalBalance;
     address payable internal _liquidityProvider;
     address payable internal _feeCollector;
     address private _createdBy;
-    IProduct internal immutable _product;
+    IProduct internal _product;
 
     Config internal _config;
 
@@ -37,7 +38,11 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
 
     uint256 private immutable _tokensBase = 10000;
 
-    constructor(
+    address private _trustedForwarder;
+
+    constructor() ERC2771Context(address(0)) {}
+
+    function __PredictionMarket_init(
         Config memory config_,
         uint256 uniqueId_,
         bytes32 marketId_,
@@ -45,15 +50,14 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
         address payable feeCollector_,
         IProduct product_,
         address trustedForwarder_
-    )
-        ERC2771Context(trustedForwarder_)
-    {
+    ) internal onlyInitializing {
         _config = config_;
         _uniqueId = uniqueId_;
         _marketId = marketId_;
         _tokensRepo = tokensRepo_;
         _feeCollector = feeCollector_;
         _product = product_;
+        _trustedForwarder = trustedForwarder_;
 
         _createdBy = msg.sender;
     }
@@ -570,5 +574,9 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == 0xc79fd359 || interfaceId == type(IMarket).interfaceId;
+    }
+
+    function isTrustedForwarder(address forwarder) public view virtual override returns (bool) {
+        return forwarder == _trustedForwarder;
     }
 }

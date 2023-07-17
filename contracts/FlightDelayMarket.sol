@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "./interfaces/IFlightStatusOracle.sol";
-import "./interfaces/IProduct.sol";
-import "./PredictionMarket.sol";
+import { IFlightStatusOracle } from "./interfaces/IFlightStatusOracle.sol";
+import { IProduct } from "./interfaces/IProduct.sol";
+import { ITokensRepository } from "./interfaces/ITokensRepository.sol";
+import { PredictionMarket } from "./PredictionMarket.sol";
 
 contract FlightDelayMarket is PredictionMarket {
     event FlightCompleted(
@@ -27,7 +28,7 @@ contract FlightDelayMarket is PredictionMarket {
     FlightInfo private _flightInfo;
     Outcome private _outcome;
 
-    constructor(
+    function initialize(
         FlightInfo memory flightInfo_,
         Config memory config_,
         uint256 uniqueId_,
@@ -36,7 +37,16 @@ contract FlightDelayMarket is PredictionMarket {
         address payable feeCollector_,
         IProduct product_,
         address trustedForwarder_
-    ) PredictionMarket(config_, uniqueId_, marketId_, tokensRepo_, feeCollector_, product_, trustedForwarder_) {
+    ) external initializer {
+        __PredictionMarket_init(
+            config_,
+            uniqueId_,
+            marketId_,
+            tokensRepo_,
+            feeCollector_,
+            product_,
+            trustedForwarder_
+        );
         _flightInfo = flightInfo_;
     }
 

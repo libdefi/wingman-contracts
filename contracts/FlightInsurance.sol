@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./Trustus.sol";
-import "./LPWallet.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { Trustus } from "./Trustus.sol";
+import { LPWallet } from "./LPWallet.sol";
 
-import "./interfaces/IFlightStatusOracle.sol";
-import "./interfaces/ITokensRepository.sol";
-import "./interfaces/IMarket.sol";
-import "./interfaces/IProduct.sol";
-import "./interfaces/IRegistry.sol";
-import "./utils/RegistryMixin.sol";
-import "./FlightDelayMarketFactory.sol";
-import "./FlightDelayMarket.sol";
+import { IFlightStatusOracle } from "./interfaces/IFlightStatusOracle.sol";
+import { ITokensRepository } from "./interfaces/ITokensRepository.sol";
+import { IMarket } from "./interfaces/IMarket.sol";
+import { IProduct } from "./interfaces/IProduct.sol";
+import { IRegistry } from "./interfaces/IRegistry.sol";
+import { RegistryMixinUpgradeable } from "./utils/RegistryMixin.sol";
+import { FlightDelayMarketFactory } from "./FlightDelayMarketFactory.sol";
+import { FlightDelayMarket } from "./FlightDelayMarket.sol";
 
 contract FlightInsurance is
     IProduct,

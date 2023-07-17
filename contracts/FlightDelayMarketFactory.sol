@@ -1,15 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "./interfaces/ITokensRepository.sol";
-import "./interfaces/IProduct.sol";
-import "./interfaces/IRegistry.sol";
-import "./utils/RegistryMixin.sol";
-import "./FlightDelayMarket.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { ITokensRepository } from "./interfaces/ITokensRepository.sol";
+import { IProduct } from "./interfaces/IProduct.sol";
+import { IRegistry } from "./interfaces/IRegistry.sol";
+import { RegistryMixin } from "./utils/RegistryMixin.sol";
+import { PredictionMarket } from "./PredictionMarket.sol";
+import { FlightDelayMarket } from "./FlightDelayMarket.sol";
 
 contract FlightDelayMarketFactory is RegistryMixin {
+    address private immutable implementation;
+
     constructor(IRegistry registry_) {
         _setRegistry(registry_);
+
+        implementation = address(new FlightDelayMarket());
     }
 
     function createMarket(
@@ -18,7 +24,8 @@ contract FlightDelayMarketFactory is RegistryMixin {
         PredictionMarket.Config calldata config,
         FlightDelayMarket.FlightInfo calldata flightInfo
     ) external onlyProduct returns (FlightDelayMarket) {
-        FlightDelayMarket market = new FlightDelayMarket(
+        FlightDelayMarket market = FlightDelayMarket(Clones.clone(implementation));
+        market.initialize(
             flightInfo,
             config,
             uniqueId,

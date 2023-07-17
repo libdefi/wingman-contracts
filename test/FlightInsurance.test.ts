@@ -250,19 +250,19 @@ describe("FlightInsurance", function () {
     it("Not reverts if msg.value is equal to maxBid + fee in a single bind", async function () {
       const { market, yetAnotherAccount, extraAccount, config } = await createMarketFinal();
 
-      const feeBase = 10000; 
+      const feeBase = 10000;
       const amountPercentage = 10000 - config.fee; // 9950 - 99.5% for main amount
       const amountWithFee = BigNumber.from(config.maxBid).mul(feeBase).div(amountPercentage); // maxBid / 0.995
       const participate = market.connect(yetAnotherAccount)
         .participate(true, { value: amountWithFee});
-      
+
       await expect(participate)
-        .not.to.be.reverted;  
+        .not.to.be.reverted;
 
       const slightlyMore = amountWithFee.add(ethers.utils.parseEther("0.000000000000000001"));
       const participate2 = market.connect(extraAccount)
         .participate(true, { value: slightlyMore});
-      
+
       await expect(participate2)
         .to.be.revertedWith(
           "Exceeded max bid"
@@ -287,13 +287,13 @@ describe("FlightInsurance", function () {
     it("Not reverts if msg.value is equal to maxBid + fee in multiple bids", async function () {
       const { market, yetAnotherAccount, extraAccount, config } = await createMarketFinal();
 
-      const feeBase = 10000; 
+      const feeBase = 10000;
       const amountPercentage = 10000 - config.fee; // 9950 - 99.5% for main amount
       const amountWithFee = BigNumber.from(config.maxBid).div(2).mul(feeBase).div(amountPercentage); // maxBid / 0.995
       const participate = market.connect(yetAnotherAccount)
         .participate(true, { value: amountWithFee});
       await expect(participate)
-        .not.to.be.reverted;  
+        .not.to.be.reverted;
 
       const participate2 = market.connect(yetAnotherAccount) // 2nd bid, same account - should be up to maxBid
         .participate(true, { value: amountWithFee});
@@ -305,11 +305,11 @@ describe("FlightInsurance", function () {
         .participate(true, { value: slightlyMore});
 
         await expect(participate3)
-        .not.to.be.reverted;  
-      
+        .not.to.be.reverted;
+
       const participate4 = market.connect(extraAccount) // 2nd bid, same account - slightly more than maxBid
         .participate(true, { value: slightlyMore});
-      
+
       await expect(participate4)
         .to.be.revertedWith(
           "Exceeded max bid"
@@ -561,7 +561,7 @@ describe("FlightInsurance", function () {
       const anotherBalanceAfterSettle = await ethers.provider.getBalance(anotherAccount.address);
       expect(ethToFloatStr(anotherBalanceAfterSettle.sub(anotherBalanceAfterBet)).substring(0, 5))
         .to.be.equal(ethToFloatStr(otherPotetialPayout).substring(0, 5));
-        
+
       await market.connect(yetAnotherAccount)
         .claim();
       const yetAnotherBalanceAfterSettle = await ethers.provider.getBalance(yetAnotherAccount.address);

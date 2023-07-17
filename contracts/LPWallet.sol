@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155ReceiverUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { ERC1155ReceiverUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155ReceiverUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import "./interfaces/ILPWallet.sol";
-import "./interfaces/IMarket.sol";
-import "./interfaces/IRegistry.sol";
-import "./utils/RegistryMixin.sol";
+import { ILPWallet } from "./interfaces/ILPWallet.sol";
+import { IMarket } from "./interfaces/IMarket.sol";
+import { IRegistry } from "./interfaces/IRegistry.sol";
+import { RegistryMixinUpgradeable } from "./utils/RegistryMixin.sol";
 
 contract LPWallet is
     ILPWallet,
