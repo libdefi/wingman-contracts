@@ -586,6 +586,30 @@ describe("FlightInsurance", function () {
       expect(args.creator).to.be.equal(anotherAccount.address);
     });
 
+    it("Emits FlightdelayMarketParticipated", async function () {
+      const { createMarketTx, marketId, insurance, config, anotherAccount } = await createMarket();
+
+      const bid = BigNumber.from(config.minBid);
+
+      const capturedMinusFee = bid
+        .mul(10000 - config.fee)
+        .div(10000);
+
+      // actual balance of YES tokens for AnotherAccount - acquired by 1st participation in market 
+      // ** check other tests assertBalances 
+      const balanceOfUserYes = "951993915217909025959"; 
+
+      await expect(createMarketTx)
+        .to.emit(insurance, "FlightDelayMarketParticipated")
+        .withArgs(
+          marketId,
+          anotherAccount.address,
+          capturedMinusFee,
+          true,
+          balanceOfUserYes
+        );
+    });
+
     it("Emits DecisionRendered", async function () {
       const { market, config, oracle } = await createMarketFinal();
 

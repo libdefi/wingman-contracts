@@ -386,7 +386,7 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
             _tokensRepo.mint(_liquidityProvider, _tokenIdYes(), userPurchaseYes);
         }
 
-        _balanceLPTokens(account, betYes, false);
+        userPurchase = _balanceLPTokens(account, userPurchase, betYes, false);
 
         _bets[account] += value;
         _tvl += value;
@@ -442,7 +442,20 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
         _product.onMarketWithdraw(_marketId, account, amount, betYes, userRefund);
     }
 
-    function _balanceLPTokens(address account, bool fixYes, bool isWithdraw) internal {
+    /**
+     * Calculate the amount of tokens to burn/mint for the AMM balance and burns/mints 
+     * @param account - the account to calculate the balance for
+     * @param userPurchase - the amount of tokens the account purchased (to be changed if bonus amount is minted) - returned
+     * @param fixYes - whether to butn/mint the YES or NO balance, usually the opposite of the bet
+     * @param isWithdraw -whether the user is withdrawing or not
+     * @return - the final amount of userPurchase tokens (no changes if no bonus amount is minted)
+     */
+    function _balanceLPTokens(
+        address account,
+        uint256 userPurchase,
+        bool fixYes,
+        bool isWithdraw
+    ) internal returns (uint256) {
         uint256 tokenIdYes = _tokenIdYes();
         uint256 tokenIdNo = _tokenIdNo();
 
@@ -459,6 +472,7 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
                 // to stimulate YES bets, we need to add the burned tokens back to the account and final supply
                 if (!isWithdraw) {
                     _tokensRepo.burn(_liquidityProvider, tokenIdYes, toBurn);
+                    userPurchase += toBurn;
                     _tokensRepo.mint(account, tokenIdYes, toBurn);
                 } else {
                     _tokensRepo.burn(_liquidityProvider, tokenIdYes, toBurn);
@@ -470,6 +484,7 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
             if (toBurn > 0) {
                 if (_config.mode == Mode.BUYER && !isWithdraw) {
                     _tokensRepo.burn(_liquidityProvider, tokenIdNo, toBurn);
+                    userPurchase += toBurn;
                     _tokensRepo.mint(account, tokenIdNo, toBurn);
                 } else {
                     _tokensRepo.burn(_liquidityProvider, tokenIdNo, toBurn);
@@ -478,6 +493,7 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
                 _tokensRepo.mint(_liquidityProvider, tokenIdNo, toMint);
             }
         }
+        return userPurchase;
     }
 
     // slither-disable-next-line reentrancy-eth reentrancy-no-eth
