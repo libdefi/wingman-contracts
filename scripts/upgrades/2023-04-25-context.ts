@@ -12,16 +12,16 @@ async function upgrade() {
 
   // 2. Deploy new factory
   const FlightDelayMarketFactory = await ethers.getContractFactory("FlightDelayMarketFactory");
-  const factory = await FlightDelayMarketFactory.deploy(registry.address);
+  const factory = await FlightDelayMarketFactory.deploy(registry.target);
 
-  console.log("New factory deployed at", factory.address);
+  console.log("New factory deployed at", factory.target);
 
   // 3. Set GelatoRelayer as per ERC-2771 forwarder mechanism, and set new factory
   await registry.setAddresses([
     1,
     101
   ], [
-    factory.address,
+    factory.target,
     GELATO_RELAYER
   ]);
 

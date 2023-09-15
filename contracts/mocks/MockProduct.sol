@@ -26,12 +26,13 @@ contract MockProduct is IProduct {
         uint256 value
     ) external override {}
 
-    function onMarketParticipate(
+    function onMarketParticipateV2(
         bytes32 marketId,
         address account,
         uint256 value,
         bool betYes,
-        uint256 amount
+        uint256 amount,
+        bool sponsored
     ) external override {}
 
     function onMarketWithdraw(

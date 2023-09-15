@@ -9,10 +9,10 @@ async function main() {
   const Operator = await ethers.getContractFactory("Operator");
   const operator = await Operator.deploy(linkToken, signer.address);
 
-  await operator.deployed();
+  await operator.deploymentTransaction()?.wait();
   await operator.setAuthorizedSenders(ORACLE_AUTHORIZED_SENDERS.polygon);
 
-  console.log(`Operator: ${operator.address}`);
+  console.log(`Operator: ${operator.target}`);
 }
 
 main().catch((error) => {

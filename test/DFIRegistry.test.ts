@@ -7,15 +7,16 @@ describe("DFIRegistry", function () {
     const [owner] = await ethers.getSigners();
 
     const DFIRegistry = await ethers.getContractFactory("DFIRegistry");
-    const dfiRegistry = await upgrades.deployProxy(DFIRegistry, []);
-    await dfiRegistry.deployed();
+    const contract = await upgrades.deployProxy(DFIRegistry, []);
+    await contract.waitForDeployment();
+    const dfiRegistry = await ethers.getContractAt("DFIRegistry", contract.target);
     return { dfiRegistry, owner };
   }
 
   describe("Deployment", function () {
     it("Should deploy DFIRegistry", async function () {
       const { dfiRegistry } = await loadFixture(deployDFIRegistryFixture);
-      assert.ok(dfiRegistry.address);
+      assert.ok(dfiRegistry.target);
     });
 
     it("Should set owner", async function () {
@@ -67,8 +68,10 @@ describe("DFIRegistry", function () {
       );
       const [_, other1, other2] = await ethers.getSigners();
       await dfiRegistry.setAddresses([1, 2], [other1.address, other2.address]);
-      expect(await dfiRegistry.getAddress(1)).to.equal(other1.address);
-      expect(await dfiRegistry.getAddress(2)).to.equal(other2.address);
+      
+      // getAddress conflicts with ethers' getAddress, so we use getFunction
+      expect(await dfiRegistry.getFunction('getAddress')(1)).to.equal(other1.address);
+      expect(await dfiRegistry.getFunction('getAddress')(2)).to.equal(other2.address);
     });
 
     it("Should return correct id for given address", async function () {
@@ -87,9 +90,9 @@ describe("DFIRegistry", function () {
       const { dfiRegistry } = await loadFixture(deployDFIRegistryFixture);
 
       const DFIRegistryV2 = await ethers.getContractFactory("DFIRegistry");
-      const dfiRegistryV2 = await upgrades.upgradeProxy(dfiRegistry.address, DFIRegistryV2);
-      await dfiRegistryV2.deployed();
-      expect(dfiRegistryV2.address).to.be.equal(dfiRegistry.address);
+      const dfiRegistryV2 = await upgrades.upgradeProxy(dfiRegistry.target, DFIRegistryV2);
+      await dfiRegistryV2.waitForDeployment();
+      expect(dfiRegistryV2.target).to.be.equal(dfiRegistry.target);
     });
   });
 });

@@ -14,7 +14,7 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
     event DecisionRendered(Result result);
     event DecisionPostponed();
     event LiquidityProvided(address provider, uint256 amount);
-    event ParticipatedInMarket(address indexed participant, uint256 amount, bool betYes);
+    event ParticipatedInMarket(address indexed participant, uint256 amount, bool betYes, bool sponsored);
     event BetWithdrawn(address indexed participant, uint256 amount, bool betYes);
     event RewardWithdrawn(address indexed participant, uint256 amount);
 
@@ -210,14 +210,14 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
     function participate(bool betYes) external payable nonReentrant {
         // TODO: add slippage guard
         _beforeAddBet(_msgSender(), msg.value);
-        _addBet(_msgSender(), betYes, msg.value);
+        _addBet(_msgSender(), betYes, msg.value, false);
     }
 
-    function registerParticipant(address account, bool betYes) external payable nonReentrant {
+    function registerParticipant(address account, bool betYes, bool sponsored) external payable nonReentrant {
         require(msg.sender == address(_product), "Unknown caller");
 
         _beforeAddBet(account, msg.value);
-        _addBet(account, betYes, msg.value);
+        _addBet(account, betYes, msg.value, sponsored);
     }
 
     function withdrawBet(uint256 amount, bool betYes) external nonReentrant {
@@ -365,7 +365,7 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
     }
 
     // slither-disable-next-line reentrancy-no-eth reentrancy-eth
-    function _addBet(address account, bool betYes, uint256 value) internal {
+    function _addBet(address account, bool betYes, uint256 value, bool sponsored) internal {
         uint256 fee = _calculateFees(value);
         value -= fee;
 
@@ -400,8 +400,8 @@ abstract contract PredictionMarket is IMarket, IERC165, ReentrancyGuard, ERC2771
         // amountLPNo = balanceOf(address(_lpWallet), tokenIdNo);
         // require(ammConst == amountDfiYes * amountDfiNo, "AMM const is wrong");
 
-        emit ParticipatedInMarket(account, value, betYes);
-        _product.onMarketParticipate(_marketId, account, value, betYes, userPurchase);
+        emit ParticipatedInMarket(account, value, betYes, sponsored);
+        _product.onMarketParticipateV2(_marketId, account, value, betYes, userPurchase, sponsored);
     }
 
     // slither-disable-next-line reentrancy-eth reentrancy-no-eth

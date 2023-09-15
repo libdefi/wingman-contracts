@@ -7,25 +7,29 @@ describe("DFIToken", function () {
     const [owner] = await ethers.getSigners();
 
     const DFIRegistry = await ethers.getContractFactory("DFIRegistry");
-    const dfiRegistry = await upgrades.deployProxy(DFIRegistry, []);
+    const registryProxy = await upgrades.deployProxy(DFIRegistry, []);
+    await registryProxy.waitForDeployment();
+    const dfiRegistry = await ethers.getContractAt("DFIRegistry", registryProxy.target);
 
     const DFIToken = await ethers.getContractFactory("DFIToken");
-    const dfiToken = await upgrades.deployProxy(DFIToken, [dfiRegistry.address]);
+    const deployedProxy = await upgrades.deployProxy(DFIToken, [dfiRegistry.target]);
+    await deployedProxy.waitForDeployment();
+    const dfiToken = await ethers.getContractAt("DFIToken", deployedProxy.target);
 
     const MockProduct = await ethers.getContractFactory("MockProduct");
     const mockProduct = await MockProduct.deploy();
 
-    const marketId = ethers.utils.randomBytes(32);
+    const marketId = ethers.randomBytes(32);
     const tokenIdYes = 100;
     const tokenIdNo = 101;
 
     const MockMarket = await ethers.getContractFactory("MockMarket");
     const mockMarket = await MockMarket.deploy(
-      mockProduct.address,
+      mockProduct.target,
       marketId,
       tokenIdYes,
       tokenIdNo,
-      dfiToken.address
+      dfiToken.target
     );
 
     return { dfiToken, dfiRegistry, owner, mockMarket, mockProduct, marketId, tokenIdNo, tokenIdYes };
@@ -34,7 +38,7 @@ describe("DFIToken", function () {
   describe("Deployment", function () {
     it("Should deploy DFIToken", async function () {
       const { dfiToken } = await loadFixture(deployDFITokenRegistryFixture);
-      assert.ok(dfiToken.address);
+      assert.ok(dfiToken.target);
     });
   });
 
@@ -58,7 +62,7 @@ describe("DFIToken", function () {
     it("Should not allow minting tokens for unknown market", async function () {
       const { mockMarket, mockProduct, dfiRegistry, owner, tokenIdYes } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await expect(
         mockMarket.mint(owner.address, tokenIdYes, 100)
@@ -68,7 +72,7 @@ describe("DFIToken", function () {
     it("Should not allow burning tokens for unknown market", async function () {
       const { mockMarket, mockProduct, dfiRegistry, owner, tokenIdYes } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await expect(
         mockMarket.burn(owner.address, tokenIdYes, 100)
@@ -78,8 +82,8 @@ describe("DFIToken", function () {
     it("Should not allow minting tokens for market with different token ID", async function () {
       const { mockMarket, mockProduct, dfiRegistry, owner, marketId } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await mockProduct.setMarket(marketId, mockMarket.address);
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await mockProduct.setMarket(marketId, mockMarket.target);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await expect(
         mockMarket.mint(owner.address, 123, 100)
@@ -89,8 +93,8 @@ describe("DFIToken", function () {
     it("Should not allow burning tokens for market with different token ID", async function () {
       const { mockMarket, mockProduct, dfiRegistry, owner, marketId } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await mockProduct.setMarket(marketId, mockMarket.address);
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await mockProduct.setMarket(marketId, mockMarket.target);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await expect(
         mockMarket.burn(owner.address, 123, 100)
@@ -102,8 +106,8 @@ describe("DFIToken", function () {
     it("Should mint tokens for market", async function () {
       const { mockMarket, mockProduct, dfiToken, marketId, dfiRegistry, owner, tokenIdYes } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await mockProduct.setMarket(marketId, mockMarket.address);
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await mockProduct.setMarket(marketId, mockMarket.target);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await mockMarket.mint(owner.address, tokenIdYes, 100);
 
@@ -116,8 +120,8 @@ describe("DFIToken", function () {
     it("Should burn tokens for market", async function () {
       const { mockMarket, mockProduct, dfiToken, marketId, dfiRegistry, owner, tokenIdYes } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await mockProduct.setMarket(marketId, mockMarket.address);
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await mockProduct.setMarket(marketId, mockMarket.target);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await mockMarket.mint(owner.address, tokenIdYes, 100);
       await mockMarket.burn(owner.address, tokenIdYes, 50);
@@ -131,8 +135,8 @@ describe("DFIToken", function () {
     it("Should return total supply for one mint", async function () {
       const { mockMarket, mockProduct, dfiToken, marketId, dfiRegistry, owner, tokenIdYes } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await mockProduct.setMarket(marketId, mockMarket.address);
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await mockProduct.setMarket(marketId, mockMarket.target);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await mockMarket.mint(owner.address, tokenIdYes, 100);
 
@@ -143,8 +147,8 @@ describe("DFIToken", function () {
     it("Should return total supply for multiple random mints", async function () {
       const { mockMarket, mockProduct, dfiToken, marketId, dfiRegistry, owner, tokenIdYes } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await mockProduct.setMarket(marketId, mockMarket.address);
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await mockProduct.setMarket(marketId, mockMarket.target);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       const randomAmounts = Array.from({ length: 10 }, () => Math.floor(Math.random() * 100));
       const expectedSupply = randomAmounts.reduce((a, b) => a + b, 0);
@@ -160,8 +164,8 @@ describe("DFIToken", function () {
     it("Should return total supply for multiple random mints and burns", async function () {
       const { mockMarket, mockProduct, dfiToken, marketId, dfiRegistry, owner, tokenIdYes } = await loadFixture(deployDFITokenRegistryFixture);
 
-      await mockProduct.setMarket(marketId, mockMarket.address);
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await mockProduct.setMarket(marketId, mockMarket.target);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       const randomAmounts = Array.from({ length: 10 }, () => Math.floor(Math.random() * 100));
       const expectedSupply = randomAmounts.reduce((a, b) => a + b, 0);
@@ -186,9 +190,9 @@ describe("DFIToken", function () {
       const { dfiToken } = await loadFixture(deployDFITokenRegistryFixture);
 
       const DFITokenV2 = await ethers.getContractFactory("DFIToken");
-      const dfiTokenV2 = await upgrades.upgradeProxy(dfiToken.address, DFITokenV2);
-      await dfiTokenV2.deployed();
-      expect(dfiTokenV2.address).to.be.equal(dfiToken.address);
+      const dfiTokenV2 = await upgrades.upgradeProxy(dfiToken.target, DFITokenV2);
+      await dfiTokenV2.waitForDeployment();
+      expect(dfiTokenV2.target).to.be.equal(dfiToken.target);
     });
   });
 });

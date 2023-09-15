@@ -7,12 +7,13 @@ interface IProduct {
     // hooks
     function onMarketLiquidity(bytes32 marketId, address provider, uint256 value) external;
 
-    function onMarketParticipate(
+    function onMarketParticipateV2(
         bytes32 marketId,
         address account,
         uint256 value,
         bool betYes,
-        uint256 amount
+        uint256 amount, 
+        bool sponsored
     ) external;
 
     function onMarketWithdraw(

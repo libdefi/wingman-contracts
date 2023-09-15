@@ -1,21 +1,23 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect, assert } from "chai";
-import { ethers, upgrades } from "hardhat";
+import { ethers } from "hardhat";
+import { DFIFaucet } from "../typechain-types";
 
 describe("DFIFaucet", function () {
   async function deployDFIFaucetFixture() {
     const [owner, nonOwner, other] = await ethers.getSigners();
 
     const DFIFaucet = await ethers.getContractFactory("DFIFaucet");
-    const dfiFaucet = await DFIFaucet.deploy(other.address);
-    await dfiFaucet.deployed();
+    const FaucetAndTxReceipt= await DFIFaucet.deploy(other.address);
+    const dfiFaucet = FaucetAndTxReceipt as DFIFaucet;
+    
     return { dfiFaucet, owner, nonOwner, other };
   }
 
   describe("Deployment", function () {
     it("Should deploy DFIFaucet", async function () {
       const { dfiFaucet } = await loadFixture(deployDFIFaucetFixture);
-      assert.ok(dfiFaucet.address);
+      assert.ok(dfiFaucet.target);
     });
 
     it("Should set admin", async function () {
@@ -29,7 +31,7 @@ describe("DFIFaucet", function () {
       const { dfiFaucet } = await loadFixture(
         deployDFIFaucetFixture
       );
-      expect(await dfiFaucet.dripAmount()).to.equal(ethers.utils.parseEther("0.05"));
+      expect(await dfiFaucet.dripAmount()).to.equal(ethers.parseEther("0.05"));
     });
   });
 
@@ -37,7 +39,7 @@ describe("DFIFaucet", function () {
     it("Should not allow non-owner to set drip amount", async function () {
       const { dfiFaucet, nonOwner } = await loadFixture(deployDFIFaucetFixture);
       await expect(
-        dfiFaucet.connect(nonOwner).setDripAmount(ethers.utils.parseEther("0.1"))
+        dfiFaucet.connect(nonOwner).setDripAmount(ethers.parseEther("0.1"))
       ).to.be.revertedWith(/is missing role/);
     });
 
@@ -58,8 +60,8 @@ describe("DFIFaucet", function () {
     it("Should not allow drip twice", async function () {
       const { dfiFaucet, owner, nonOwner } = await loadFixture(deployDFIFaucetFixture);
       await owner.sendTransaction({
-        to: dfiFaucet.address,
-        value: ethers.utils.parseEther("100")
+        to: dfiFaucet.target,
+        value: ethers.parseEther("100")
       });
 
       await dfiFaucet.connect(nonOwner).drip();
@@ -77,12 +79,12 @@ describe("DFIFaucet", function () {
       );
 
       await owner.sendTransaction({
-        to: dfiFaucet.address,
-        value: ethers.utils.parseEther("100")
+        to: dfiFaucet.target,
+        value: ethers.parseEther("100")
       });
 
       await expect(dfiFaucet.connect(owner).drip()).to.emit(dfiFaucet, "Drip")
-        .withArgs(owner.address, ethers.utils.parseEther("0.05"));
+        .withArgs(owner.address, ethers.parseEther("0.05"));
     });
   });
 
@@ -92,9 +94,9 @@ describe("DFIFaucet", function () {
         deployDFIFaucetFixture
       );
 
-      expect(await dfiFaucet.dripAmount()).to.equal(ethers.utils.parseEther("0.05"));
-      await dfiFaucet.connect(owner).setDripAmount(ethers.utils.parseEther("0.1"));
-      expect(await dfiFaucet.dripAmount()).to.equal(ethers.utils.parseEther("0.1"));
+      expect(await dfiFaucet.dripAmount()).to.equal(ethers.parseEther("0.05"));
+      await dfiFaucet.connect(owner).setDripAmount(ethers.parseEther("0.1"));
+      expect(await dfiFaucet.dripAmount()).to.equal(ethers.parseEther("0.1"));
     });
   });
 
@@ -105,13 +107,13 @@ describe("DFIFaucet", function () {
       );
 
       await owner.sendTransaction({
-        to: dfiFaucet.address,
-        value: ethers.utils.parseEther("100")
+        to: dfiFaucet.target,
+        value: ethers.parseEther("100")
       });
 
 
       await expect(dfiFaucet.connect(nonOwner).drip())
-        .to.changeEtherBalance(nonOwner, ethers.utils.parseEther("0.05"));
+        .to.changeEtherBalance(nonOwner, ethers.parseEther("0.05"));
     });
 
     it("Should drip to other if dripper", async function () {
@@ -120,14 +122,14 @@ describe("DFIFaucet", function () {
       );
 
       await owner.sendTransaction({
-        to: dfiFaucet.address,
-        value: ethers.utils.parseEther("100")
+        to: dfiFaucet.target,
+        value: ethers.parseEther("100")
       });
 
       await dfiFaucet.grantRole(await dfiFaucet.DRIPPER_ROLE(), nonOwner.address);
 
       await expect(dfiFaucet.connect(nonOwner).dripTo(other.address))
-        .to.changeEtherBalance(other, ethers.utils.parseEther("0.05"));
+        .to.changeEtherBalance(other, ethers.parseEther("0.05"));
     });
 
     it("Should save drip amount", async function () {
@@ -136,15 +138,15 @@ describe("DFIFaucet", function () {
       );
 
       await owner.sendTransaction({
-        to: dfiFaucet.address,
-        value: ethers.utils.parseEther("100")
+        to: dfiFaucet.target,
+        value: ethers.parseEther("100")
       });
 
       expect(await dfiFaucet.dripped(nonOwner.address)).to.equal(0);
 
       await dfiFaucet.connect(nonOwner).drip();
 
-      expect(await dfiFaucet.dripped(nonOwner.address)).to.equal(ethers.utils.parseEther("0.05"));
+      expect(await dfiFaucet.dripped(nonOwner.address)).to.equal(ethers.parseEther("0.05"));
     });
   });
 });

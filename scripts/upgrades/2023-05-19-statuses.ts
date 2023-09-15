@@ -5,15 +5,15 @@ async function upgrade() {
 
   // 1. Deploy new factory
   const FlightDelayMarketFactory = await ethers.getContractFactory("FlightDelayMarketFactory");
-  const factory = await FlightDelayMarketFactory.deploy(registry.address);
+  const factory = await FlightDelayMarketFactory.deploy(registry.target);
 
-  console.log("New factory deployed at", factory.address);
+  console.log("New factory deployed at", factory.target);
 
   // 2. Set new factory
   await registry.setAddresses([
     1,
   ], [
-    factory.address,
+    factory.target,
   ]);
 
   console.log("Done!");

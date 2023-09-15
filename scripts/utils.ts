@@ -1,9 +1,9 @@
 import { ethers } from "hardhat";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
 export async function trustusRequest(
   request: string,
-  signer: SignerWithAddress,
+  signer: HardhatEthersSigner,
   verifyingContract: string,
   payload: string,
   deadline: number
@@ -12,7 +12,7 @@ export async function trustusRequest(
     verifyingContract,
     name: "Trustus",
     version: "1",
-    chainId: await signer.getChainId()
+    chainId: (await signer.provider.getNetwork()).chainId,
   };
 
   const types = {
@@ -29,8 +29,8 @@ export async function trustusRequest(
     request,
   };
 
-  const result = await signer._signTypedData(domain, types, message);
-  const { r, v, s } = ethers.utils.splitSignature(result);
+  const result = await signer.signTypedData(domain, types, message);
+  const { r, v, s } = ethers.Signature.from(result);
 
   const packet = {
     v, r, s,

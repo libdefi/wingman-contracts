@@ -6,7 +6,7 @@ async function upgrade() {
   const DFIFaucet = await ethers.getContractFactory("DFIFaucet");
   const faucet = await DFIFaucet.deploy(GELATO_RELAYER);
 
-  console.log("Faucet deployed at", faucet.address);
+  console.log("Faucet deployed at", faucet.target);
 }
 
 upgrade().catch((error) => {

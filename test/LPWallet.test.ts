@@ -1,4 +1,4 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect, assert } from "chai";
 import { ethers, upgrades } from "hardhat";
 
@@ -7,26 +7,32 @@ describe("LPWallet", function () {
     const [owner, anotherAccount] = await ethers.getSigners();
 
     const DFIRegistry = await ethers.getContractFactory("DFIRegistry");
-    const dfiRegistry = await upgrades.deployProxy(DFIRegistry, []);
+    const registryProxy = await upgrades.deployProxy(DFIRegistry, []);
+    await registryProxy.waitForDeployment();
+    const dfiRegistry = await ethers.getContractAt("DFIRegistry", registryProxy.target);
 
     const DFIToken = await ethers.getContractFactory("DFIToken");
-    const dfiToken = await upgrades.deployProxy(DFIToken, [dfiRegistry.address])
+    const deployedProxy = await upgrades.deployProxy(DFIToken, [dfiRegistry.target]);
+    await deployedProxy.waitForDeployment();
+    const dfiToken = await ethers.getContractAt("DFIToken", deployedProxy.target);
 
     const LPWallet = await ethers.getContractFactory("LPWallet");
-    const lpWallet = await upgrades.deployProxy(LPWallet, [dfiRegistry.address]);
+    const walletProxy = await upgrades.deployProxy(LPWallet, [dfiRegistry.target]);
+    await walletProxy.waitForDeployment();
+    const lpWallet = await ethers.getContractAt("LPWallet", walletProxy.target);
 
     const MockProduct = await ethers.getContractFactory("MockProduct");
     const mockProduct = await MockProduct.deploy();
 
-    const marketId = ethers.utils.randomBytes(32);
+    const marketId = ethers.randomBytes(32);
 
     const MockMarket = await ethers.getContractFactory("MockMarket");
     const mockMarket = await MockMarket.deploy(
-      mockProduct.address,
+      mockProduct.target,
       marketId,
       100,
       101,
-      dfiToken.address
+      dfiToken.target
     );
 
     return { dfiRegistry, owner, marketId, dfiToken, lpWallet, mockMarket, mockProduct, anotherAccount };
@@ -35,7 +41,7 @@ describe("LPWallet", function () {
   describe("Deployment", function () {
     it("Should deploy LPWallet", async function () {
       const { lpWallet } = await loadFixture(deployLPWalletFixture);
-      assert.ok(lpWallet.address);
+      assert.ok(lpWallet.target);
     });
   });
 
@@ -45,7 +51,7 @@ describe("LPWallet", function () {
 
       await expect(
         lpWallet.provideLiquidity(
-          mockMarket.address,
+          mockMarket.target,
           100,
         )
       ).to.be.revertedWith("Unknown product");
@@ -54,13 +60,13 @@ describe("LPWallet", function () {
     it("Should revert if not enough money to provide liquidity", async function () {
       const { lpWallet, mockMarket, dfiRegistry, mockProduct } = await loadFixture(deployLPWalletFixture);
 
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await expect(
         mockProduct.provideLiquidity(
-          lpWallet.address,
-          mockMarket.address,
-          ethers.utils.parseEther("100")
+          lpWallet.target,
+          mockMarket.target,
+          ethers.parseEther("100")
         )
       ).to.be.revertedWithoutReason();
     });
@@ -94,24 +100,24 @@ describe("LPWallet", function () {
     it("Should allow liquidity to be provided", async function () {
       const { lpWallet, mockMarket, owner, dfiRegistry, mockProduct } = await loadFixture(deployLPWalletFixture);
 
-      await dfiRegistry.setAddresses([1], [mockProduct.address]);
+      await dfiRegistry.setAddresses([1], [mockProduct.target]);
 
       await owner.sendTransaction({
-        to: lpWallet.address,
-        value: ethers.utils.parseEther("101"),
+        to: lpWallet.target,
+        value: ethers.parseEther("101"),
       });
 
-      const balanceBefore = await ethers.provider.getBalance(lpWallet.address);
-      expect(balanceBefore).to.equal(ethers.utils.parseEther("101"));
+      const balanceBefore = await ethers.provider.getBalance(lpWallet.target);
+      expect(balanceBefore).to.equal(ethers.parseEther("101"));
 
       await mockProduct.provideLiquidity(
-        lpWallet.address,
-        mockMarket.address,
-        ethers.utils.parseEther("100"),
+        lpWallet.target,
+        mockMarket.target,
+        ethers.parseEther("100"),
       );
 
-      const balanceAfter = await ethers.provider.getBalance(lpWallet.address);
-      expect(balanceAfter).to.equal(ethers.utils.parseEther("1"));
+      const balanceAfter = await ethers.provider.getBalance(lpWallet.target);
+      expect(balanceAfter).to.equal(ethers.parseEther("1"));
     });
   });
 
@@ -120,26 +126,26 @@ describe("LPWallet", function () {
       const { lpWallet, owner } = await loadFixture(deployLPWalletFixture);
 
       await owner.sendTransaction({
-        to: lpWallet.address,
-        value: ethers.utils.parseEther("101"),
+        to: lpWallet.target,
+        value: ethers.parseEther("101"),
       });
 
-      const balanceBefore = await ethers.provider.getBalance(lpWallet.address);
-      expect(balanceBefore).to.equal(ethers.utils.parseEther("101"));
+      const balanceBefore = await ethers.provider.getBalance(lpWallet.target);
+      expect(balanceBefore).to.equal(ethers.parseEther("101"));
 
       const randomWallet = ethers.Wallet.createRandom();
 
       await lpWallet.connect(owner)
         .withdraw(
           randomWallet.address,
-          ethers.utils.parseEther("100"),
+          ethers.parseEther("100"),
         );
 
-      const balanceAfter = await ethers.provider.getBalance(lpWallet.address);
-      expect(balanceAfter).to.equal(ethers.utils.parseEther("1"));
+      const balanceAfter = await ethers.provider.getBalance(lpWallet.target);
+      expect(balanceAfter).to.equal(ethers.parseEther("1"));
 
       const randomWalletBalance = await ethers.provider.getBalance(randomWallet.address);
-      expect(randomWalletBalance).to.equal(ethers.utils.parseEther("100"));
+      expect(randomWalletBalance).to.equal(ethers.parseEther("100"));
     });
   });
 
@@ -148,9 +154,9 @@ describe("LPWallet", function () {
       const { lpWallet } = await loadFixture(deployLPWalletFixture);
 
       const LPWalletV2 = await ethers.getContractFactory("LPWallet");
-      const lpWalletV2 = await upgrades.upgradeProxy(lpWallet.address, LPWalletV2);
-      await lpWalletV2.deployed();
-      expect(lpWalletV2.address).to.be.equal(lpWallet.address);
+      const lpWalletV2 = await upgrades.upgradeProxy(lpWallet.target, LPWalletV2);
+      await lpWalletV2.waitForDeployment();
+      expect(lpWalletV2.target).to.be.equal(lpWallet.target);
     });
   });
 });

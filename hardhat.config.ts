@@ -2,6 +2,8 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 
+const PRIVATE_KEY = process.env.PRIVATE_KEY ?? '';
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
@@ -25,6 +27,10 @@ const config: HardhatUserConfig = {
       },
     ]
   },
+  defender: {
+    apiKey: process.env.DEF_API_KEY!,
+    apiSecret: process.env.DEF_API_SECRET!,
+  },
   networks: {
     hardhat: {},
     local: {
@@ -35,18 +41,19 @@ const config: HardhatUserConfig = {
     },
     mumbai: {
       url: "https://rpc.ankr.com/polygon_mumbai",
-      accounts: [process.env.PRIVATE_KEY!]
+      accounts: [PRIVATE_KEY]
     },
     polygon: {
-      url: "https://polygon-rpc.com/"
+      url: process.env.POLYGON_RPC_URL ?? "https://polygon-rpc.com/",
+      accounts: [PRIVATE_KEY]
     },
     goerli: {
       url: "https://rpc.ankr.com/eth_goerli",
-      accounts: [process.env.PRIVATE_KEY!]
+      accounts: [PRIVATE_KEY]
     },
     baseGoerli: {
       url: "https://goerli.base.org",
-      accounts: [process.env.PRIVATE_KEY!],
+      accounts: [PRIVATE_KEY],
     }
   },
 

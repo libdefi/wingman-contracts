@@ -1,13 +1,13 @@
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect, assert } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { BigNumberish, BigNumber } from "ethers";
+import { BigNumberish, EventLog } from "ethers";
 
 import { trustusRequest } from "../scripts/utils";
-import { DFIToken, FlightDelayMarket, FlightInsurance } from "../typechain-types";
+import { DFIToken, FlightDelayMarket } from "../typechain-types";
 
-const TRUSTUS_REQUEST_ID = ethers.utils.keccak256(
-  ethers.utils.toUtf8Bytes("createMarket(bool)")
+const TRUSTUS_REQUEST_ID = ethers.keccak256(
+  ethers.toUtf8Bytes("createMarket(bool)")
 );
 
 interface MarketConfig {
@@ -39,8 +39,8 @@ function createMarketConfig(oracle: string, mode: number, customConfig?: Partial
   const cutoffTime = now + 24 * 3600;
   const closingTime = cutoffTime + 2.5 * 3600;
 
-  const dfiBid = ethers.utils.parseEther("100");
-  const userBid = ethers.utils.parseEther("5");
+  const dfiBid = ethers.parseEther("100");
+  const userBid = ethers.parseEther("5");
 
   const config: MarketConfig = {
     mode,
@@ -48,7 +48,7 @@ function createMarketConfig(oracle: string, mode: number, customConfig?: Partial
     cutoffTime,
     closingTime,
     minBid: userBid.toString(),
-    maxBid: userBid.mul(10).toString(), // 50
+    maxBid: (userBid * 10n).toString(), // 50
     lpBid: dfiBid.toString(),
     fee: 50, // 1% = 100
     initP: 200, // 1% = 100
@@ -94,7 +94,7 @@ function createMarketConfig(oracle: string, mode: number, customConfig?: Partial
 }
 
 function ethToFloatStr(value: BigNumberish) {
-  return parseFloat(ethers.utils.formatEther(value)).toFixed(7);
+  return parseFloat(ethers.formatEther(value)).toFixed(7);
 }
 
 describe("FlightInsurance", function () {
@@ -102,71 +102,85 @@ describe("FlightInsurance", function () {
     const [owner, anotherAccount, yetAnotherAccount, extraAccount] = await ethers.getSigners();
 
     const DFIRegistry = await ethers.getContractFactory("DFIRegistry");
-    const registry = await upgrades.deployProxy(DFIRegistry, []);
+    const registryProxy = await upgrades.deployProxy(DFIRegistry, []);
+    const registry = await ethers.getContractAt("DFIRegistry", registryProxy.target);
 
     const DFIToken = await ethers.getContractFactory("DFIToken");
-    const dfiToken = await upgrades.deployProxy(DFIToken, [registry.address]) as DFIToken;
+    const tokenProxy = await upgrades.deployProxy(DFIToken, [registry.target]);
+    const dfiToken = await ethers.getContractAt("DFIToken", tokenProxy.target);
 
     const LPWallet = await ethers.getContractFactory("LPWallet");
-    const lpWallet = await upgrades.deployProxy(LPWallet, [registry.address]);
+    const walletProxy = await upgrades.deployProxy(LPWallet, [registry.target]);
+    const lpWallet = await ethers.getContractAt("LPWallet", walletProxy.target);
 
     const FlightDelayMarketFactory = await ethers.getContractFactory("FlightDelayMarketFactory");
-    const factory = await FlightDelayMarketFactory.deploy(registry.address);
+    const factory = await FlightDelayMarketFactory.deploy(registry.target);
 
     const MockFlightStatusOracle = await ethers.getContractFactory("MockFlightStatusOracle");
     const oracle = await MockFlightStatusOracle.deploy();
 
     await Promise.all([
-      registry.deployed(),
-      dfiToken.deployed(),
-      lpWallet.deployed(),
-      factory.deployed(),
-      oracle.deployed()
+      registryProxy.waitForDeployment(),
+      tokenProxy.waitForDeployment(),
+      walletProxy.waitForDeployment(),
+      factory.deploymentTransaction()?.wait(),
+      oracle.deploymentTransaction()?.wait()
     ]);
 
     const feeCollector = ethers.Wallet.createRandom();
 
     const FlightInsurance = await ethers.getContractFactory("FlightInsurance");
 
-    const insurance = await upgrades.deployProxy(FlightInsurance, [registry.address]) as FlightInsurance;
-    await insurance.deployed();
-    await insurance.setWallet(lpWallet.address);
+    const insuranceProxy = await upgrades.deployProxy(FlightInsurance, [registry.target]);
+    await insuranceProxy.waitForDeployment();
+    const insurance = await ethers.getContractAt("FlightInsurance", insuranceProxy.target);
+    await insurance.setWallet(lpWallet.target);
 
     await owner.sendTransaction({
-      to: lpWallet.address,
-      value: ethers.utils.parseEther("100")
+      to: lpWallet.target,
+      value: ethers.parseEther("100")
     });
 
     await registry.setAddresses(
       [1, 2, 3, 4, 5, 100],
-      [factory.address, dfiToken.address, lpWallet.address, insurance.address, oracle.address, feeCollector.address]
+      [factory.target, dfiToken.target, lpWallet.target, insurance.target, oracle.target, feeCollector.address]
     );
 
     return { insurance, owner, anotherAccount, yetAnotherAccount, lpWallet, extraAccount, feeCollector, dfiToken, registry, oracle, factory };
   }
 
-  async function createMarket(mode: number = 0, customConfig?: Partial<MarketConfig>) {
+  async function createMarket(mode: number = 0, sponsored: boolean = false, customConfig?: Partial<MarketConfig>) {
     const deployFlightInsurance = await loadFixture(deployFlightInsuranceFixture);
     const { anotherAccount, yetAnotherAccount, insurance, oracle } = deployFlightInsurance;
 
-    const marketConfig = createMarketConfig(oracle.address, mode, customConfig);
+    const oracleAddress = await oracle.getAddress();
+    const marketConfig = createMarketConfig(oracleAddress, mode, customConfig);
     const { config, configArrTypes, configArrValues, flightInfo } = marketConfig;
 
     await insurance.setIsTrusted(yetAnotherAccount.address, true);
 
-    const payload = ethers.utils.defaultAbiCoder.encode(
+    const payload = ethers.AbiCoder.defaultAbiCoder().encode(
       configArrTypes,
       configArrValues
     );
 
     const deadline = Math.ceil(Date.now()/1000) + 60;
-    const packet = await trustusRequest(TRUSTUS_REQUEST_ID, yetAnotherAccount, insurance.address, payload, deadline);
+    const insuranceAddress = await insurance.getAddress();
+    const packet = await trustusRequest(TRUSTUS_REQUEST_ID, yetAnotherAccount, insuranceAddress, payload, deadline);
 
-    const createMarketTx = insurance.connect(anotherAccount)
-      .createMarket(true, packet, { value: config.minBid });
+    let createMarketTx; 
+    
+    if(sponsored) {
+      await insurance.setSponsoredBetAmount(ethers.parseEther("5"));
+      await yetAnotherAccount.sendTransaction({ to: insurance.target, value: ethers.parseEther("10") }); // 2x minBid
+      createMarketTx = insurance.connect(anotherAccount).createMarketSponsored(true, packet);
+    } else {
+      createMarketTx = insurance.connect(anotherAccount)
+        .createMarket(true, packet, { value: config.minBid });
+    }
 
-    const marketId = ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
+    const marketId = ethers.keccak256(
+      ethers.AbiCoder.defaultAbiCoder().encode(
         ["string", "uint64", "uint32"],
         [flightInfo.flightName, flightInfo.departureDate, flightInfo.delay]
       )
@@ -175,8 +189,8 @@ describe("FlightInsurance", function () {
     return { createMarketTx, packet, marketId, ...deployFlightInsurance, ...marketConfig };
   }
 
-  async function createMarketFinal(mode: number = 0) {
-    const createMarketValues = await createMarket(mode);
+  async function createMarketFinal(mode: number = 0, sponsored: boolean = false) {
+    const createMarketValues = await createMarket(mode, sponsored);
     const { createMarketTx, insurance, marketId } = createMarketValues;
     await createMarketTx;
 
@@ -190,7 +204,7 @@ describe("FlightInsurance", function () {
     it("Should set the right settings", async function () {
       const { insurance, lpWallet } = await loadFixture(deployFlightInsuranceFixture);
 
-      expect(await insurance.wallet()).to.be.equal(lpWallet.address);
+      expect(await insurance.wallet()).to.be.equal(lpWallet.target);
     });
 
     it("Should set the correct owner", async function () {
@@ -203,15 +217,17 @@ describe("FlightInsurance", function () {
   describe("Validations", function () {
     it("Reverts on untrusted Trustus package", async function () {
       const { anotherAccount, yetAnotherAccount, insurance, oracle } = await loadFixture(deployFlightInsuranceFixture);
-      const { config, configArrTypes, configArrValues } = createMarketConfig(oracle.address, 0);
+      const oracleAddress = await oracle.getAddress();
+      const { config, configArrTypes, configArrValues } = createMarketConfig(oracleAddress, 0);
 
-      const payload = ethers.utils.defaultAbiCoder.encode(
+      const payload = ethers.AbiCoder.defaultAbiCoder().encode(
         configArrTypes,
         configArrValues
       );
 
       const deadline = Math.ceil(Date.now()/1000) + 60;
-      const packet = await trustusRequest(TRUSTUS_REQUEST_ID, yetAnotherAccount, insurance.address, payload, deadline);
+      const insuranceAddress = await insurance.getAddress();
+      const packet = await trustusRequest(TRUSTUS_REQUEST_ID, yetAnotherAccount, insuranceAddress, payload, deadline);
 
       const createMarket = insurance.connect(anotherAccount)
         .createMarket(true, packet, { value: config.minBid });
@@ -227,7 +243,7 @@ describe("FlightInsurance", function () {
       const { market, anotherAccount, userBid } = await createMarketFinal();
 
       const participate = market.connect(anotherAccount)
-        .participate(true, { value: userBid.div(100) });
+        .participate(true, { value: userBid / 100n });
 
       await expect(participate)
         .to.be.revertedWith(
@@ -239,7 +255,7 @@ describe("FlightInsurance", function () {
       const { market, anotherAccount, userBid } = await createMarketFinal();
 
       const participate = market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(100) });
+        .participate(true, { value: userBid * 100n });
 
       await expect(participate)
         .to.be.revertedWith(
@@ -250,16 +266,16 @@ describe("FlightInsurance", function () {
     it("Not reverts if msg.value is equal to maxBid + fee in a single bind", async function () {
       const { market, yetAnotherAccount, extraAccount, config } = await createMarketFinal();
 
-      const feeBase = 10000;
-      const amountPercentage = 10000 - config.fee; // 9950 - 99.5% for main amount
-      const amountWithFee = BigNumber.from(config.maxBid).mul(feeBase).div(amountPercentage); // maxBid / 0.995
+      const feeBase = 10000n;
+      const amountPercentage = 10000n - BigInt(config.fee); // 9950 - 99.5% for main amount
+      const amountWithFee = BigInt(config.maxBid) * feeBase / amountPercentage; // maxBid / 0.995
       const participate = market.connect(yetAnotherAccount)
         .participate(true, { value: amountWithFee});
 
       await expect(participate)
         .not.to.be.reverted;
 
-      const slightlyMore = amountWithFee.add(ethers.utils.parseEther("0.000000000000000001"));
+      const slightlyMore = amountWithFee + ethers.parseEther("0.000000000000000001");
       const participate2 = market.connect(extraAccount)
         .participate(true, { value: slightlyMore});
 
@@ -273,10 +289,10 @@ describe("FlightInsurance", function () {
       const { anotherAccount, market, userBid } = await createMarketFinal();
 
       await market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(8) });
+        .participate(true, { value: userBid * 8n });
 
       const participate = market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(2) });
+        .participate(true, { value: userBid * 2n });
 
       await expect(participate)
         .to.be.revertedWith(
@@ -287,9 +303,9 @@ describe("FlightInsurance", function () {
     it("Not reverts if msg.value is equal to maxBid + fee in multiple bids", async function () {
       const { market, yetAnotherAccount, extraAccount, config } = await createMarketFinal();
 
-      const feeBase = 10000;
-      const amountPercentage = 10000 - config.fee; // 9950 - 99.5% for main amount
-      const amountWithFee = BigNumber.from(config.maxBid).div(2).mul(feeBase).div(amountPercentage); // maxBid / 0.995
+      const feeBase = 10000n;
+      const amountPercentage = 10000n - BigInt(config.fee); // 9950 - 99.5% for main amount
+      const amountWithFee = BigInt(config.maxBid) / 2n * feeBase / amountPercentage; // maxBid / 0.995
       const participate = market.connect(yetAnotherAccount)
         .participate(true, { value: amountWithFee});
       await expect(participate)
@@ -300,7 +316,7 @@ describe("FlightInsurance", function () {
       await expect(participate2)
         .not.to.be.reverted;
 
-      const slightlyMore = amountWithFee.add(ethers.utils.parseEther("0.000000000000000001"));
+      const slightlyMore = amountWithFee + ethers.parseEther("0.000000000000000001");
       const participate3 = market.connect(extraAccount)
         .participate(true, { value: slightlyMore});
 
@@ -320,10 +336,10 @@ describe("FlightInsurance", function () {
       const { market, anotherAccount, userBid } = await createMarketFinal();
 
       await market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(5) });
+        .participate(true, { value: userBid * 5n });
 
       const participate = market.connect(anotherAccount)
-        .participate(false, { value: userBid.mul(5) });
+        .participate(false, { value: userBid * 5n });
 
       await expect(participate)
         .to.be.revertedWith(
@@ -332,7 +348,7 @@ describe("FlightInsurance", function () {
     });
 
     it("Reverts if cuttoff time is in the past", async function () {
-      const { createMarketTx } = await createMarket(0, { cutoffTime: Math.floor((Date.now() / 1000) - 1000) });
+      const { createMarketTx } = await createMarket(0, false, { cutoffTime: Math.floor((Date.now() / 1000) - 1000) });
 
       await expect(createMarketTx)
         .to.be.revertedWith("Cannot create closed market");
@@ -397,9 +413,9 @@ describe("FlightInsurance", function () {
       await time.increaseTo(config.cutoffTime + 1);
       await market.trySettle();
 
-      const payload = ethers.utils.defaultAbiCoder.encode(
+      const payload = ethers.AbiCoder.defaultAbiCoder().encode(
         ["bytes1", "uint64"],
-        [ethers.utils.toUtf8Bytes("L"), 90]
+        [ethers.toUtf8Bytes("L"), 90]
       );
 
       const recordDecision = market.connect(anotherAccount)
@@ -414,7 +430,7 @@ describe("FlightInsurance", function () {
     it("Returns correct product", async function () {
       const { insurance, market } = await createMarketFinal();
 
-      expect(await market.product()).to.be.equal(insurance.address);
+      expect(await market.product()).to.be.equal(insurance.target);
     });
 
     it("Returns correct marketId", async function () {
@@ -426,7 +442,7 @@ describe("FlightInsurance", function () {
     it("Returns correct creator", async function () {
       const { market, factory } = await createMarketFinal();
 
-      expect(await market.createdBy()).to.be.equal(factory.address);
+      expect(await market.createdBy()).to.be.equal(factory.target);
     });
 
     it("Returns correct token slots", async function () {
@@ -464,13 +480,13 @@ describe("FlightInsurance", function () {
     });
 
     it("Returns correct predicted price ETH for Payout before market is settled", async function () {
-      const { market, yetAnotherAccount, userBid, dfiToken, oracle, config } = await createMarketFinal();
+      const { market, yetAnotherAccount, userBid, oracle, config } = await createMarketFinal();
 
       // Calculate potential payout for 10 ETH to YES
-      const potetialPayout = await market.priceETHForPayout(userBid.mul(2), yetAnotherAccount.address, true);
+      const potetialPayout = await market.priceETHForPayout(userBid * 2n, yetAnotherAccount.address, true);
 
       await market.connect(yetAnotherAccount)
-        .participate(true, { value: userBid.mul(2) }); // 10 ETH to YES
+        .participate(true, { value: userBid * 2n }); // 10 ETH to YES
       const balanceAfterBet = await ethers.provider.getBalance(yetAnotherAccount.address);
 
       // advance time to cutoff
@@ -479,11 +495,11 @@ describe("FlightInsurance", function () {
       const tx = await market.trySettle();
       // extract request id from event
       const receipt = await tx.wait();
-      const requestId = ethers.utils.arrayify(receipt.events![0].data);
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
 
       await oracle.fulfillFlightStatus(
         requestId,
-        ethers.utils.toUtf8Bytes("L"),
+        ethers.toUtf8Bytes("L"),
         45 * 60
       );
 
@@ -492,27 +508,27 @@ describe("FlightInsurance", function () {
 
       const userBalanceAfterSettle = await ethers.provider.getBalance(yetAnotherAccount.address);
 
-      expect(ethToFloatStr(userBalanceAfterSettle.sub(balanceAfterBet)).substring(0, 5))
+      expect(ethToFloatStr(userBalanceAfterSettle - balanceAfterBet).substring(0, 5))
         .to.be.equal(ethToFloatStr(potetialPayout).substring(0, 5));
     });
 
     it("Returns correct predicted price ETH for Payout before market is settled for new user (zero address)", async function () {
-      const { market, yetAnotherAccount, userBid, dfiToken, oracle, config } = await createMarketFinal();
+      const { market, yetAnotherAccount, userBid, oracle, config } = await createMarketFinal();
 
       // calculate potential payout for new account - user 0 address here (no wallet connected yet)
-      const yetAnotherPotetialPayout = await market.priceETHForPayout(userBid.mul(2), ethers.constants.AddressZero, false);
+      const yetAnotherPotetialPayout = await market.priceETHForPayout(userBid * 2n, ethers.ZeroAddress, false);
       await market.connect(yetAnotherAccount)
-        .participate(false, { value: userBid.mul(2) }); // 10 ETH to NO
+        .participate(false, { value: userBid * 2n }); // 10 ETH to NO
       const yetAnotherBalanceAfterBet = await ethers.provider.getBalance(yetAnotherAccount.address);
 
       // advance time to cutoff
       await time.increaseTo(config.cutoffTime + 1);
       const tx = await market.trySettle();
       const receipt = await tx.wait();
-      const requestId = ethers.utils.arrayify(receipt.events![0].data);
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
       await oracle.fulfillFlightStatus(
         requestId,
-        ethers.utils.toUtf8Bytes("L"),
+        ethers.toUtf8Bytes("L"),
         0 * 60
       );
 
@@ -520,25 +536,25 @@ describe("FlightInsurance", function () {
         .claim();
       const yetAnotherBalanceAfterSettle = await ethers.provider.getBalance(yetAnotherAccount.address);
       // slice to 5 digits after comma to not fail on gas price difference
-      expect(ethToFloatStr(yetAnotherBalanceAfterSettle.sub(yetAnotherBalanceAfterBet)).substring(0, 5))
+      expect(ethToFloatStr(yetAnotherBalanceAfterSettle - yetAnotherBalanceAfterBet).substring(0, 5))
         .to.be.equal(ethToFloatStr(yetAnotherPotetialPayout).substring(0, 5));
     });
 
     it("Returns correct predicted price ETH for Payout before market is settled for BUYER mode and >1 bets", async function () {
-      const { market, anotherAccount, yetAnotherAccount, userBid, dfiToken, oracle, config } = await createMarketFinal(1); // Mode.BUYER
+      const { market, anotherAccount, yetAnotherAccount, userBid, oracle, config } = await createMarketFinal(1); // Mode.BUYER
 
       // calculate potential payout for new account - we user 0 address here (no wallet connected yet)
-      const yetAnotherPotetialPayout = await market.priceETHForPayout(userBid.mul(2), ethers.constants.AddressZero, true);
+      const yetAnotherPotetialPayout = await market.priceETHForPayout(userBid * 2n, ethers.ZeroAddress, true);
       await market.connect(yetAnotherAccount)
-        .participate(true, { value: userBid.mul(2) }); // 10 ETH to NO
+        .participate(true, { value: userBid * 2n }); // 10 ETH to NO
       const yetAnotherBalanceAfterBet = await ethers.provider.getBalance(yetAnotherAccount.address);
 
       // Calculate potential payout for 5 ETH more to YES for another account
       // (should alread have 4.975 in ETH on market creation)
-      const otherPotetialPayout = await market.priceETHForPayout(userBid.mul(1), anotherAccount.address, true);
+      const otherPotetialPayout = await market.priceETHForPayout(userBid, anotherAccount.address, true);
 
       await market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(1) }); // 5 ETH to YES
+        .participate(true, { value: userBid }); // 5 ETH to YES
       const anotherBalanceAfterBet = await ethers.provider.getBalance(anotherAccount.address);
 
       // advance time to cutoff
@@ -547,11 +563,11 @@ describe("FlightInsurance", function () {
       const tx = await market.trySettle();
       // extract request id from event
       const receipt = await tx.wait();
-      const requestId = ethers.utils.arrayify(receipt.events![0].data);
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
 
       await oracle.fulfillFlightStatus(
         requestId,
-        ethers.utils.toUtf8Bytes("L"),
+        ethers.toUtf8Bytes("L"),
         45 * 60
       );
 
@@ -559,14 +575,14 @@ describe("FlightInsurance", function () {
         .claim();
 
       const anotherBalanceAfterSettle = await ethers.provider.getBalance(anotherAccount.address);
-      expect(ethToFloatStr(anotherBalanceAfterSettle.sub(anotherBalanceAfterBet)).substring(0, 5))
+      expect(ethToFloatStr(anotherBalanceAfterSettle - anotherBalanceAfterBet).substring(0, 5))
         .to.be.equal(ethToFloatStr(otherPotetialPayout).substring(0, 5));
 
       await market.connect(yetAnotherAccount)
         .claim();
       const yetAnotherBalanceAfterSettle = await ethers.provider.getBalance(yetAnotherAccount.address);
       // it should be slightly different because of another account claiming + gas, but still close
-      expect(ethToFloatStr(yetAnotherBalanceAfterSettle.sub(yetAnotherBalanceAfterBet)).substring(0, 5))
+      expect(ethToFloatStr(yetAnotherBalanceAfterSettle - yetAnotherBalanceAfterBet ).substring(0, 5))
         .to.be.equal(ethToFloatStr(yetAnotherPotetialPayout).substring(0, 5));
     });
   });
@@ -579,9 +595,10 @@ describe("FlightInsurance", function () {
         .to.emit(insurance, "FlightDelayMarketCreated");
 
       const receipt = await (await createMarketTx).wait();
-      const event = receipt.events?.find(e => e.event === "FlightDelayMarketCreated");
+      const event = receipt?.logs?.find(e => (e instanceof EventLog) && e.eventName === "FlightDelayMarketCreated");
       assert(event, "Event not found");
-      const args = event!.args!;
+      assert(event instanceof EventLog, "Event not found");
+      const args = (event as EventLog).args;
       expect(args.uniqueId).to.be.equal(10);
       expect(args.creator).to.be.equal(anotherAccount.address);
     });
@@ -589,11 +606,9 @@ describe("FlightInsurance", function () {
     it("Emits FlightdelayMarketParticipated", async function () {
       const { createMarketTx, marketId, insurance, config, anotherAccount } = await createMarket();
 
-      const bid = BigNumber.from(config.minBid);
+      const bid = BigInt(config.minBid);
 
-      const capturedMinusFee = bid
-        .mul(10000 - config.fee)
-        .div(10000);
+      const capturedMinusFee = bid * (10000n - BigInt(config.fee)) / 10000n;
 
       // actual balance of YES tokens for AnotherAccount - acquired by 1st participation in market 
       // ** check other tests assertBalances 
@@ -606,7 +621,8 @@ describe("FlightInsurance", function () {
           anotherAccount.address,
           capturedMinusFee,
           true,
-          balanceOfUserYes
+          balanceOfUserYes,
+          false // not sponsored participation
         );
     });
 
@@ -618,11 +634,11 @@ describe("FlightInsurance", function () {
       const tx = await market.trySettle();
       // extract request id from event
       const receipt = await tx.wait();
-      const requestId = ethers.utils.arrayify(receipt.events![0].data);
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
 
       const fulfillTx = await oracle.fulfillFlightStatus(
         requestId,
-        ethers.utils.toUtf8Bytes("L"),
+        ethers.toUtf8Bytes("L"),
         45 * 60
       );
 
@@ -639,11 +655,11 @@ describe("FlightInsurance", function () {
       const tx = await market.trySettle();
       // extract request id from event
       const receipt = await tx.wait();
-      const requestId = ethers.utils.arrayify(receipt.events![0].data);
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
 
       const fulfillTx = await oracle.fulfillFlightStatus(
         requestId,
-        ethers.utils.toUtf8Bytes("A"),
+        ethers.toUtf8Bytes("A"),
         0
       );
 
@@ -656,32 +672,31 @@ describe("FlightInsurance", function () {
 
       await expect(createMarketTx)
         .to.emit(market, "LiquidityProvided")
-        .withArgs(lpWallet.address, config.lpBid);
+        .withArgs(lpWallet.target, config.lpBid);
     });
 
     it("Emits ParticipatedInMarket", async function () {
       const { createMarketTx, market, anotherAccount, config } = await createMarketFinal();
 
-      const bid = BigNumber.from(config.minBid);
+      const bid = BigInt(config.minBid);
 
-      const capturedMinusFee = bid
-        .mul(10000 - config.fee)
-        .div(10000);
+      const capturedMinusFee = bid * (10000n - BigInt(config.fee)) / 10000n;
 
       await expect(createMarketTx)
         .to.emit(market, "ParticipatedInMarket")
         .withArgs(
           anotherAccount.address,
           capturedMinusFee,
-          true
+          true,
+          false // not sponsored participation
         );
     });
 
     it("Emits BetWithdrawn", async function () {
       const { market, anotherAccount, config } = await createMarketFinal();
 
-      const bid = BigNumber.from(config.minBid);
-      const amount = bid.div(2);
+      const bid = BigInt(config.minBid);
+      const amount = bid / 2n;
 
       const [expectedWithdrawal] = await market.priceETHForYesNo(amount, anotherAccount.address);
 
@@ -705,11 +720,11 @@ describe("FlightInsurance", function () {
       const tx = await market.trySettle();
       // extract request id from event
       const receipt = await tx.wait();
-      const requestId = ethers.utils.arrayify(receipt.events![0].data);
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
 
       const fulfillTx = await oracle.fulfillFlightStatus(
         requestId,
-        ethers.utils.toUtf8Bytes("L"),
+        ethers.toUtf8Bytes("L"),
         45 * 60
       );
 
@@ -724,13 +739,59 @@ describe("FlightInsurance", function () {
       await expect(claim)
         .to.emit(market, "RewardWithdrawn");
     });
+
+    it("Emits FlightDelayMarketSponsored for sponsored creation", async function () {
+      const { createMarketTx, insurance, anotherAccount } = await createMarket(0, true);
+
+      await expect(createMarketTx)
+        .to.emit(insurance, "FlightDelayMarketSponsored");
+
+      const receipt = await (await createMarketTx).wait();
+      const event = receipt?.logs?.find(e => (e instanceof EventLog) && e.eventName === "FlightDelayMarketCreated");
+      assert(event, "Event not found");
+      assert(event instanceof EventLog, "Event not found");
+      const args = (event as EventLog).args;
+      expect(args.uniqueId).to.be.equal(10);
+      expect(args.creator).to.be.equal(anotherAccount.address);
+
+      const sponsoredEvent = receipt?.logs?.find(e => (e instanceof EventLog) && e.eventName === "FlightDelayMarketSponsored");
+      assert(sponsoredEvent, "Event not found");
+      assert(sponsoredEvent instanceof EventLog, "Event not found");
+      const sponsoredArgs = (sponsoredEvent as EventLog).args;
+      expect(sponsoredArgs.marketId).to.be.equal(args.marketId);
+      expect(sponsoredArgs.participant).to.be.equal(anotherAccount.address);
+      expect(sponsoredArgs.value).to.be.equal(ethers.parseEther("5"));
+      expect(sponsoredArgs.betYes).to.be.equal(true);
+    });
+
+    it("Emits FlightDelayMarketParticipated for sponsored participation", async function () {
+      const { insurance, market, marketId, yetAnotherAccount } = await createMarketFinal(0, true);
+
+      const participateSponsoredTx = insurance.connect(yetAnotherAccount).registerParticipantSponsored(market.target, false);
+      await expect(participateSponsoredTx).to.emit(insurance, "FlightDelayMarketSponsored").withArgs(
+        marketId,
+        yetAnotherAccount.address,
+        ethers.parseEther("5"),
+        false
+      );
+      await expect(participateSponsoredTx)
+        .to.emit(insurance, "FlightDelayMarketParticipated")
+        .withArgs(
+          marketId,
+          yetAnotherAccount.address,
+          "4975000000000000000",
+          false,
+          "9950000000000000000",
+          true // sponsored participation
+        );
+    });
   });
 
   interface Balances {
     tokens?: Record<string, Record<number, string>>;
     wallets?: Record<string, string>;
     supplies?: Record<number, string>;
-    prices?: Map<BigNumber, Record<"Y"|"N", string>>;
+    prices?: Map<bigint, Record<"Y"|"N", string>>;
   }
 
   async function assertBalances(market: FlightDelayMarket, dfiToken: DFIToken, balances: Balances) {
@@ -778,14 +839,14 @@ describe("FlightInsurance", function () {
       const [mId, mAddr] =
         await insurance.findMarket(flightInfo.flightName, flightInfo.departureDate, flightInfo.delay);
       expect(mId).to.be.equal(marketId);
-      expect(mAddr).to.be.equal(market.address);
+      expect(mAddr).to.be.equal(market.target);
 
       const marketAddress = await insurance.getMarket(marketId);
-      expect(marketAddress).to.be.equal(market.address);
+      expect(marketAddress).to.be.equal(market.target);
 
       expect(await market.result()).to.be.equal(0);
       expect(await market.decisionState()).to.be.equal(0);
-      expect(await market.tvl()).to.be.equal(ethers.utils.parseEther("104.975"));
+      expect(await market.tvl()).to.be.equal(ethers.parseEther("104.975"));
       expect(await market.finalBalance()).to.be.deep.equal([0, 0, 0]);
 
       await assertBalances(market, dfiToken, {
@@ -796,23 +857,23 @@ describe("FlightInsurance", function () {
             11: "0"
           },
           // dfi balanced out
-          [lpWallet.address]: {
+          [lpWallet.target as string]: {
             10: "9335.5560848",
             11: "209.9500000"
           },
         },
         wallets: {
           // dfi paid for init distribution
-          [lpWallet.address]: "0",
+          [lpWallet.target as string]: "0",
           [feeCollector.address]: "0.0250000", // 5*0.005
-          [market.address]: "104.9750000"
+          [market.target as string]: "104.9750000"
         },
         supplies: {
           10: "10287.5500000",
           11: "209.9500000"
         },
         prices: new Map([
-          [ethers.utils.parseEther("5"), {
+          [ethers.parseEther("5"), {
             Y: "487.5500000",  // ~ 0.01020388
             N: "9.9500000" // ~ 0.5
           }]
@@ -838,7 +899,7 @@ describe("FlightInsurance", function () {
       });
 
       await market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(2) }); // 10
+        .participate(true, { value: userBid * 2n }); // 10
 
       await assertBalances(market, dfiToken, {
         tokens: {
@@ -846,14 +907,14 @@ describe("FlightInsurance", function () {
             10: "2735.3495867",
             11: "0"
           },
-          [lpWallet.address]: {
+          [lpWallet.target as string]: {
             10: "8527.3004133",
             11: "229.8500000"
           },
         },
         wallets: {
           [feeCollector.address]: "0.0750000", // 5*0.005 + 10*0.005,
-          [market.address]: "114.9250000"
+          [market.target as string]: "114.9250000"
         },
         supplies: {
           10: "11262.6500000",
@@ -879,7 +940,7 @@ describe("FlightInsurance", function () {
 
       // Buy tokens YES for 10 ETH (- 5% fee)
       await market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(2) }); // 10
+        .participate(true, { value: userBid * 2n }); // 10
 
       await assertBalances(market, dfiToken, {
         tokens: {
@@ -898,13 +959,13 @@ describe("FlightInsurance", function () {
         .to.changeEtherBalance(anotherAccount, userPricesYes);
 
       // we should choose the lower price to withdraw
-      assert(marketPricesYes.gte(userPricesYes), "Expected the lowest price to be selected for withdrawal");
+      assert(marketPricesYes >= userPricesYes, "Expected the lowest price to be selected for withdrawal");
 
-      const [,yetAnotherAccountNoBalance] = await market.connect(yetAnotherAccount).priceETHToYesNo(userBid.mul(10));
+      const [,yetAnotherAccountNoBalance] = await market.connect(yetAnotherAccount).priceETHToYesNo(userBid * 10n);
 
       // Buy tokens NO for 50 ETH (- 5% fee) to drop the YES price, using yet another account
       market.connect(yetAnotherAccount)
-        .participate(false, { value: userBid.mul(10) }); // 50
+        .participate(false, { value: userBid * 10n }); // 50
 
       const anotherAccountYesBalance = await dfiToken.balanceOf(anotherAccount.address, 10);
 
@@ -916,9 +977,9 @@ describe("FlightInsurance", function () {
         .to.changeEtherBalance(anotherAccount, userPricesYes);
 
       // we should choose the lower price to withdraw
-      assert(marketPricesYes.gte(userPricesYes), "Expected the lowest price to be selected for withdrawal");
+      assert(marketPricesYes >= userPricesYes, "Expected the lowest price to be selected for withdrawal");
 
-      const lpNoBalance = await dfiToken.balanceOf(lpWallet.address, 11);
+      const lpNoBalance = await dfiToken.balanceOf(lpWallet.target, 11);
 
 
       await assertBalances(market, dfiToken, {
@@ -931,18 +992,18 @@ describe("FlightInsurance", function () {
             10: "0",
             11: ethToFloatStr(yetAnotherAccountNoBalance)
           },
-          [lpWallet.address]: {
+          [lpWallet.target as string]: {
             10: "13401.7930996",
             11: "146.2490866"
           },
         },
         wallets: {
           [feeCollector.address]: "0.3250000", // 5*0.005 + 10*0.005 + 50*0.005
-          [market.address]: "149.7500000"
+          [market.target as string]: "149.7500000"
         },
         supplies: {
           10: "13401.7930996",
-          11: ethToFloatStr(yetAnotherAccountNoBalance.add(lpNoBalance)) // 99.5455641 + 152.7358861 = 252.2814502
+          11: ethToFloatStr(yetAnotherAccountNoBalance + lpNoBalance) // 99.5455641 + 152.7358861 = 252.2814502
         },
         prices: new Map([
           [userBid, {
@@ -999,7 +1060,7 @@ describe("FlightInsurance", function () {
         .to.changeEtherBalance(yetAnotherAccount, userPricesYes);
 
       // we should choose the lower price to withdraw
-      assert(marketPricesYes.gte(userPricesYes), "Expected the lowest price to be selected for withdrawal");
+      assert(marketPricesYes >= userPricesYes, "Expected the lowest price to be selected for withdrawal");
 
       await assertBalances(market, dfiToken, {
         tokens: {
@@ -1027,17 +1088,17 @@ describe("FlightInsurance", function () {
         const { anotherAccount, market, dfiToken, userBid, lpWallet, config, feeCollector, oracle } = await createMarketFinal();
 
         await market.connect(anotherAccount)
-          .participate(true, { value: userBid.mul(2) }); // 10
+          .participate(true, { value: userBid * 2n }); // 10
 
         await market.connect(anotherAccount)
           .withdrawBet(userBid, true); // 5
 
         const userBalanceBefore = await ethers.provider.getBalance(anotherAccount.address);
-        const lpBalanceBefore = await ethers.provider.getBalance(lpWallet.address);
+        const lpBalanceBefore = await ethers.provider.getBalance(lpWallet.target);
 
         await assertBalances(market, dfiToken, {
           wallets: {
-            [market.address]: "114.8977183",
+            [market.target as string]: "114.8977183",
           }
         });
 
@@ -1047,15 +1108,15 @@ describe("FlightInsurance", function () {
         const tx = await market.trySettle();
         // extract request id from event
         const receipt = await tx.wait();
-        const requestId = ethers.utils.arrayify(receipt.events![0].data);
+        const requestId = ethers.getBytes(receipt!.logs![0].data);
 
         const outcomeBefore = await market.outcome();
-        expect(ethers.utils.toUtf8String(outcomeBefore[0])).to.be.equal("\u0000");
+        expect(ethers.toUtf8String(outcomeBefore[0])).to.be.equal("\u0000");
         expect(outcomeBefore[1]).to.be.equal(0);
 
         await oracle.fulfillFlightStatus(
           requestId,
-          ethers.utils.toUtf8Bytes(status),
+          ethers.toUtf8Bytes(status),
           delay
         );
 
@@ -1067,7 +1128,7 @@ describe("FlightInsurance", function () {
           .claim();
 
         const userBalanceAfter = await ethers.provider.getBalance(anotherAccount.address);
-        const dfiBalanceAfter = await ethers.provider.getBalance(lpWallet.address);
+        const dfiBalanceAfter = await ethers.provider.getBalance(lpWallet.target);
 
         await assertBalances(market, dfiToken, {
           tokens: {
@@ -1075,7 +1136,7 @@ describe("FlightInsurance", function () {
               10: "0",
               11: "0"
             },
-            [lpWallet.address]: {
+            [lpWallet.target as string]: {
               10: "0",
               11: "229.8500000"
             },
@@ -1089,19 +1150,18 @@ describe("FlightInsurance", function () {
           },
         });
 
-        expect(ethToFloatStr(dfiBalanceAfter.sub(lpBalanceBefore)).substring(0, 5))
+        expect(ethToFloatStr(dfiBalanceAfter - lpBalanceBefore).substring(0, 5))
           .to.be.equal("87.03"); // strip gas fees
 
-        expect(ethToFloatStr(userBalanceAfter.sub(userBalanceBefore)).substring(0, 5))
+        expect(ethToFloatStr(userBalanceAfter - userBalanceBefore).substring(0, 5))
           .to.be.equal("27.86"); // strip gas fees
 
-        const totalWithdrawn = userBalanceAfter.sub(userBalanceBefore)
-          .add(dfiBalanceAfter.sub(lpBalanceBefore));
+        const totalWithdrawn = userBalanceAfter - userBalanceBefore + dfiBalanceAfter - lpBalanceBefore;
         expect(ethToFloatStr(totalWithdrawn).substring(0, 7))
           .to.be.equal("114.897");
 
         // bank
-        expect(await ethers.provider.getBalance(market.address))
+        expect(await ethers.provider.getBalance(market.target))
           .to.be.equal(1); // 1 wei left
       })
     );
@@ -1119,23 +1179,23 @@ describe("FlightInsurance", function () {
             11: "0"
           },
           // dfi balanced out
-          [lpWallet.address]: {
+          [lpWallet.target as string]: {
             10: "9335.5560848",
             11: "209.9500000"
           },
         },
         wallets: {
           // dfi paid for init distribution
-          [lpWallet.address]: "0",
+          [lpWallet.target as string]: "0",
           [feeCollector.address]: "0.0250000",
-          [market.address]: "104.9750000"
+          [market.target as string]: "104.9750000"
         },
         supplies: {
           10: "10287.5500000",
           11: "209.9500000"
         },
         prices: new Map([
-          [ethers.utils.parseEther("5"), {
+          [ethers.parseEther("5"), {
             Y: "487.5500000",  // ~ 0.0102,
             N: "9.9500000" // ~ 0.5
           }]
@@ -1156,7 +1216,7 @@ describe("FlightInsurance", function () {
       });
 
       await market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(2) }); // 10
+        .participate(true, { value: userBid * 2n }); // 10
 
       await assertBalances(market, dfiToken, {
         tokens: {
@@ -1164,7 +1224,7 @@ describe("FlightInsurance", function () {
             10: "2735.3495867",
             11: "0"
           },
-          [lpWallet.address]: {
+          [lpWallet.target as string]: {
             10: "8527.3004133",
             11: "229.8500000"
           },
@@ -1175,10 +1235,10 @@ describe("FlightInsurance", function () {
         },
         wallets: {
           [feeCollector.address]: "0.0750000",
-          [market.address]: "114.9250000"
+          [market.target as string]: "114.9250000"
         },
         prices: new Map([
-          [ethers.utils.parseEther("5"), {
+          [ethers.parseEther("5"), {
             Y: "487.5500000",  // ~ 0.0102
             N: "9.9500000" // ~ 0.5025
           }]
@@ -1191,7 +1251,7 @@ describe("FlightInsurance", function () {
       // anotherAccount should already have 4.975 in ETH and 9.95 YES tokens on market creation (see createMarketFinal)
 
       await market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(2) }); // 10
+        .participate(true, { value: userBid * 2n }); // 10
 
       await assertBalances(market, dfiToken, {
         tokens: {
@@ -1210,7 +1270,7 @@ describe("FlightInsurance", function () {
         .to.changeEtherBalance(anotherAccount, userPricesYes); // 5
 
       // we should choose the lower price to withdraw
-      assert(marketPricesYes.gte(userPricesYes), "Expected the lowest price to be selected for withdrawal");
+      assert(marketPricesYes >= userPricesYes, "Expected the lowest price to be selected for withdrawal");
 
       await assertBalances(market, dfiToken, {
         tokens: {
@@ -1218,21 +1278,21 @@ describe("FlightInsurance", function () {
             10: "2730.3495867",
             11: "0"
           },
-          [lpWallet.address]: {
+          [lpWallet.target as string]: {
             10: "8527.3004133",
             11: "229.8500000"
           },
         },
         wallets: {
           [feeCollector.address]: "0.0750000",
-          [market.address]: "114.8977183"
+          [market.target as string]: "114.8977183"
         },
         supplies: {
           10: "11257.6500000",
           11: "229.8500000"
         },
         prices: new Map([
-          [ethers.utils.parseEther("5"), {
+          [ethers.parseEther("5"), {
             Y: "487.4492686", // ~ 0.0102
             N: "9.9523626" // ~ 0.5
           }]
@@ -1244,17 +1304,17 @@ describe("FlightInsurance", function () {
       const { insurance, anotherAccount, config, market, oracle, dfiToken, userBid, lpWallet, feeCollector } = await createMarketFinal(1);
 
       await market.connect(anotherAccount)
-        .participate(true, { value: userBid.mul(2) }); // 10
+        .participate(true, { value: userBid * 2n }); // 10
 
       await market.connect(anotherAccount)
         .withdrawBet(userBid, true); // 5
 
       const userBalanceBefore = await ethers.provider.getBalance(anotherAccount.address);
-      const lpBalanceBefore = await ethers.provider.getBalance(lpWallet.address);
+      const lpBalanceBefore = await ethers.provider.getBalance(lpWallet.target);
 
       await assertBalances(market, dfiToken, {
         wallets: {
-          [market.address]: "114.8977183"
+          [market.target as string]: "114.8977183"
         }
       });
 
@@ -1264,11 +1324,11 @@ describe("FlightInsurance", function () {
       const tx = await market.trySettle();
       // extract request id from event
       const receipt = await tx.wait();
-      const requestId = ethers.utils.arrayify(receipt.events![0].data);
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
 
       await oracle.fulfillFlightStatus(
         requestId,
-        ethers.utils.toUtf8Bytes("L"),
+        ethers.toUtf8Bytes("L"),
         45 * 60
       );
 
@@ -1276,7 +1336,7 @@ describe("FlightInsurance", function () {
         .claim();
 
       const userBalanceAfter = await ethers.provider.getBalance(anotherAccount.address);
-      const lpBalanceAfter = await ethers.provider.getBalance(lpWallet.address);
+      const lpBalanceAfter = await ethers.provider.getBalance(lpWallet.target);
 
       await assertBalances(market, dfiToken, {
         tokens: {
@@ -1284,7 +1344,7 @@ describe("FlightInsurance", function () {
             10: "0",
             11: "0"
           },
-          [lpWallet.address]: {
+          [lpWallet.target as string]: {
             10: "0",
             11: "229.8500000"
           },
@@ -1298,20 +1358,145 @@ describe("FlightInsurance", function () {
         },
       });
 
-      expect(ethToFloatStr(lpBalanceAfter.sub(lpBalanceBefore)).substring(0, 5))
+      expect(ethToFloatStr(lpBalanceAfter - lpBalanceBefore).substring(0, 5))
         .to.be.equal("87.03"); // strip gas fees
 
-      expect(ethToFloatStr(userBalanceAfter.sub(userBalanceBefore)).substring(0, 5))
+      expect(ethToFloatStr(userBalanceAfter - userBalanceBefore).substring(0, 5))
         .to.be.equal("27.86"); // strip gas fees
 
-      const totalWithdrawn = userBalanceAfter.sub(userBalanceBefore)
-        .add(lpBalanceAfter.sub(lpBalanceBefore));
+      const totalWithdrawn = userBalanceAfter - userBalanceBefore + lpBalanceAfter - lpBalanceBefore;
       expect(ethToFloatStr(totalWithdrawn).substring(0, 7))
         .to.be.equal("114.897");
 
       // bank
-      expect(await ethers.provider.getBalance(market.address))
+      expect(await ethers.provider.getBalance(market.target))
         .to.be.equal(1); // 1 wei
+    });
+  });
+
+  describe("Sponsor flow", function () {
+    it("Should top-up and withdraw insurance contract", async function () {
+      const { insurance, anotherAccount } = await createMarketFinal();
+
+      const balanceBefore = await ethers.provider.getBalance(insurance.target);
+      await anotherAccount.sendTransaction({ to: insurance.target, value: ethers.parseEther("1") });
+      const balanceAfter = await ethers.provider.getBalance(insurance.target);
+      expect(balanceAfter - balanceBefore).to.be.equal(ethers.parseEther("1"));
+
+      const accountBalance = await ethers.provider.getBalance(anotherAccount.address);
+      await insurance.withdraw(anotherAccount.address);
+      expect(await ethers.provider.getBalance(insurance.target)).to.be.equal(0);
+      const accountBalanceAfter = await ethers.provider.getBalance(anotherAccount.address);
+      expect(accountBalanceAfter - accountBalance).to.be.equal(ethers.parseEther("1"));
+    });
+
+    it("Should initialize variables, setSponsoredBetAmount", async function () {
+      const { insurance, anotherAccount } = await createMarketFinal();
+
+      expect(await insurance.sponsoredBetAmount()).to.be.equal(ethers.parseEther("0.01"));
+
+      await insurance.setSponsoredBetAmount(ethers.parseEther("2"));
+
+      expect(await insurance.sponsoredBetAmount()).to.be.equal(ethers.parseEther("2"));
+
+      const anotherChange = insurance.connect(anotherAccount).setSponsoredBetAmount(ethers.parseEther("3"));
+
+      expect(anotherChange).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should calculate sponsorAvailable properly", async function () {
+      const {insurance, market, yetAnotherAccount, extraAccount} = await createMarketFinal();
+
+      expect(await insurance.sponsorAvailable(ethers.ZeroAddress)).to.be.equal(false);
+
+      await yetAnotherAccount.sendTransaction({ to: insurance.target, value: ethers.parseEther("10") }); // 5 to sponsor
+      await insurance.setSponsoredBetAmount(ethers.parseEther("5"));
+
+      expect(await insurance.sponsorAvailable(ethers.ZeroAddress)).to.be.equal(true);
+
+      await insurance.setSponsoredBetAmount(0n);
+
+      expect(await insurance.sponsorAvailable(ethers.ZeroAddress)).to.be.equal(false);
+
+      await insurance.setSponsoredBetAmount(ethers.parseEther("5"));
+
+      expect(await insurance.sponsorAvailable(yetAnotherAccount.address)).to.be.equal(true);
+
+      const sponsoredTrans = insurance.connect(yetAnotherAccount).registerParticipantSponsored(market.target, true); // send 5 eth on behalf of yetAnotherAccount
+      
+      await expect(sponsoredTrans).not.to.be.reverted;
+
+      expect(await insurance.sponsorAvailable(yetAnotherAccount.address)).to.be.equal(false);
+      expect(await insurance.connect(extraAccount).sponsorAvailable(ethers.ZeroAddress)).to.be.equal(true);
+    });
+
+    it("Should create market with sponsored participation", async function () {
+      const { insurance, market, anotherAccount, oracle, config } = await createMarketFinal(0, true); // sponsored creation + participation  
+
+      const insuranceBalance = await ethers.provider.getBalance(insurance.target);
+      expect(insuranceBalance).to.be.equal(ethers.parseEther("5")); // first transferred 10 eth and minus 5 eth for sponsored participation
+      expect(await insurance.participant(anotherAccount.address)).to.be.equal(market.target);
+      
+      const balanceAfterBet = await ethers.provider.getBalance(anotherAccount.address);
+
+      // advance time to cutoff
+      await time.increaseTo(config.cutoffTime + 1);
+
+      const tx = await market.trySettle();
+      // extract request id from event
+      const receipt = await tx.wait();
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
+
+      await oracle.fulfillFlightStatus(
+        requestId,
+        ethers.toUtf8Bytes("L"),
+        45 * 60
+      );
+
+      await market.connect(anotherAccount)
+        .claim();
+
+      const userBalanceAfterSettle = await ethers.provider.getBalance(anotherAccount.address);
+
+      expect(ethToFloatStr(userBalanceAfterSettle - balanceAfterBet).substring(0, 5))
+        .to.be.equal("9.714"); // another acc bet YES 5 eth, so it should get 9.714 eth back
+    });
+
+    it("Shoukd registerParticipantSponsored correctly", async function () {
+      const { insurance, market, yetAnotherAccount, oracle, config } = await createMarketFinal(0, true); // sponsored creation + participation
+
+      await insurance.setSponsoredBetAmount(ethers.parseEther("0"));
+      await expect(insurance.connect(yetAnotherAccount)
+      .registerParticipantSponsored(market.target, false))
+      .to.be.revertedWith("FlightDelayInsurance: Sponsored bet amount is 0");
+      await insurance.setSponsoredBetAmount(ethers.parseEther("5"));
+
+      const balanceBeforeBet = await ethers.provider.getBalance(yetAnotherAccount.address);
+      await insurance.connect(yetAnotherAccount).registerParticipantSponsored(market.target, false); // send 5 eth on behalf of yetAnotherAccount
+      const balanceAfterBet = await ethers.provider.getBalance(yetAnotherAccount.address);
+      expect(ethToFloatStr(balanceBeforeBet).substring(0, 5)).to.be.equal(ethToFloatStr(balanceAfterBet).substring(0, 5)); // minus gas (will be relayed)
+
+      // advance time to cutoff
+      await time.increaseTo(config.cutoffTime + 1);
+
+      const tx = await market.trySettle();
+      // extract request id from event
+      const receipt = await tx.wait();
+      const requestId = ethers.getBytes(receipt!.logs![0].data);
+
+      await oracle.fulfillFlightStatus(
+        requestId,
+        ethers.toUtf8Bytes("L"),
+        0 * 60
+      );
+
+      await market.connect(yetAnotherAccount)
+        .claim();
+
+      const userBalanceAfterSettle = await ethers.provider.getBalance(yetAnotherAccount.address);
+
+      expect(ethToFloatStr(userBalanceAfterSettle - balanceAfterBet).substring(0, 5))
+        .to.be.equal("5.222"); // yetanother acc bet NO 5 eth, so it should get 5.222 eth back
     });
   });
 
@@ -1320,9 +1505,9 @@ describe("FlightInsurance", function () {
       const { insurance } = await loadFixture(deployFlightInsuranceFixture);
 
       const FlightInsuranceV2 = await ethers.getContractFactory("FlightInsurance");
-      const insuranceV2 = await upgrades.upgradeProxy(insurance.address, FlightInsuranceV2);
-      await insuranceV2.deployed();
-      expect(insuranceV2.address).to.be.equal(insurance.address);
+      const insuranceV2 = await upgrades.upgradeProxy(insurance.target, FlightInsuranceV2);
+      await insuranceV2.waitForDeployment();
+      expect(insuranceV2.target).to.be.equal(insurance.target);
     });
   });
 });

@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 
 async function deploy() {
-  const jobId = ethers.utils.toUtf8Bytes("7733b99d0bbd4b61986e9bb9a9d0605f");
+  const jobId = ethers.toUtf8Bytes("7733b99d0bbd4b61986e9bb9a9d0605f");
 
   const LexisNexisTester = await ethers.getContractFactory("LexisNexisTester");
   const tester = await LexisNexisTester.deploy(
@@ -10,9 +10,9 @@ async function deploy() {
     jobId
   );
 
-  await tester.deployed();
+  await tester.deploymentTransaction()?.wait();
 
-  console.log(`LexisNexisTester: ${tester.address}`);
+  console.log(`LexisNexisTester: ${tester.target}`);
 }
 
 async function requestStatus() {

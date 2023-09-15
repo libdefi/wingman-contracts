@@ -722,7 +722,7 @@
             "label": "_registry",
             "offset": 0,
             "slot": "154",
-            "type": "t_contract(IRegistry)5091",
+            "type": "t_contract(IRegistry)5100",
             "contract": "RegistryMixin",
             "src": "contracts/utils/RegistryMixin.sol:12"
           },
@@ -732,7 +732,7 @@
             "slot": "155",
             "type": "t_array(t_uint256)50_storage",
             "contract": "ERC1967UpgradeUpgradeable",
-            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:211"
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:197"
           },
           {
             "label": "__gap",
@@ -754,7 +754,7 @@
             "label": "_markets",
             "offset": 0,
             "slot": "256",
-            "type": "t_mapping(t_bytes32,t_contract(FlightDelayMarket)1805)",
+            "type": "t_mapping(t_bytes32,t_contract(FlightDelayMarket)1812)",
             "contract": "FlightInsurance",
             "src": "contracts/FlightInsurance.sol:72"
           },
@@ -762,7 +762,7 @@
             "label": "_lpWallet",
             "offset": 0,
             "slot": "257",
-            "type": "t_contract(LPWallet)2671",
+            "type": "t_contract(LPWallet)2678",
             "contract": "FlightInsurance",
             "src": "contracts/FlightInsurance.sol:75"
           }
@@ -788,15 +788,15 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(FlightDelayMarket)1805": {
+          "t_contract(FlightDelayMarket)1812": {
             "label": "contract FlightDelayMarket",
             "numberOfBytes": "20"
           },
-          "t_contract(IRegistry)5091": {
+          "t_contract(IRegistry)5100": {
             "label": "contract IRegistry",
             "numberOfBytes": "20"
           },
-          "t_contract(LPWallet)2671": {
+          "t_contract(LPWallet)2678": {
             "label": "contract LPWallet",
             "numberOfBytes": "20"
           },
@@ -804,7 +804,631 @@
             "label": "mapping(address => bool)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_bytes32,t_contract(FlightDelayMarket)1805)": {
+          "t_mapping(t_bytes32,t_contract(FlightDelayMarket)1812)": {
+            "label": "mapping(bytes32 => contract FlightDelayMarket)",
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "2f71f86a8395b1838e2f2f23cca0f4a0c4c19732df85221408a676297ac89666": {
+      "address": "0xf7EF58BcA886C88738e64136045353Da5592d657",
+      "txHash": "0x5b8d69b75d30ad4c5fb6ce955256e778d98e1ef55b4e0eccac28b23586ff3112",
+      "layout": {
+        "solcVersion": "0.8.17",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:80"
+          },
+          {
+            "label": "INITIAL_CHAIN_ID",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:38"
+          },
+          {
+            "label": "INITIAL_DOMAIN_SEPARATOR",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_bytes32",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:41"
+          },
+          {
+            "label": "isTrusted",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:49"
+          },
+          {
+            "label": "_registry",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_contract(IRegistry)6283",
+            "contract": "RegistryMixin",
+            "src": "contracts/utils/RegistryMixin.sol:12"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:211"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "205",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol:107"
+          },
+          {
+            "label": "_marketUniqueIdCounter",
+            "offset": 0,
+            "slot": "255",
+            "type": "t_uint256",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:78"
+          },
+          {
+            "label": "_markets",
+            "offset": 0,
+            "slot": "256",
+            "type": "t_mapping(t_bytes32,t_contract(FlightDelayMarket)2526)",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:81"
+          },
+          {
+            "label": "_lpWallet",
+            "offset": 0,
+            "slot": "257",
+            "type": "t_contract(LPWallet)3771",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:84"
+          },
+          {
+            "label": "_sponsoredBetAmount",
+            "offset": 0,
+            "slot": "258",
+            "type": "t_uint256",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:87"
+          },
+          {
+            "label": "_sponsoredParticipants",
+            "offset": 0,
+            "slot": "259",
+            "type": "t_mapping(t_address,t_address)",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:90"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(FlightDelayMarket)2526": {
+            "label": "contract FlightDelayMarket",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IRegistry)6283": {
+            "label": "contract IRegistry",
+            "numberOfBytes": "20"
+          },
+          "t_contract(LPWallet)3771": {
+            "label": "contract LPWallet",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_contract(FlightDelayMarket)2526)": {
+            "label": "mapping(bytes32 => contract FlightDelayMarket)",
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "554225a188451e778a61c689710bd4e6de09b0872fe3e82008d25b230e270a2a": {
+      "address": "0x60362c1AfB9Cc1bA58df834F99412BF0e5220D27",
+      "txHash": "0x54ed404d22edcf686e9cc56303624cc653d8eac651e99686752062cfb7abf9f2",
+      "layout": {
+        "solcVersion": "0.8.17",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          },
+          {
+            "label": "INITIAL_CHAIN_ID",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:38"
+          },
+          {
+            "label": "INITIAL_DOMAIN_SEPARATOR",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_bytes32",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:41"
+          },
+          {
+            "label": "isTrusted",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:49"
+          },
+          {
+            "label": "_registry",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_contract(IRegistry)12634",
+            "contract": "RegistryMixin",
+            "src": "contracts/utils/RegistryMixin.sol:12"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:169"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "205",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol:111"
+          },
+          {
+            "label": "_marketUniqueIdCounter",
+            "offset": 0,
+            "slot": "255",
+            "type": "t_uint256",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:78"
+          },
+          {
+            "label": "_markets",
+            "offset": 0,
+            "slot": "256",
+            "type": "t_mapping(t_bytes32,t_contract(FlightDelayMarket)8473)",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:81"
+          },
+          {
+            "label": "_lpWallet",
+            "offset": 0,
+            "slot": "257",
+            "type": "t_contract(LPWallet)10122",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:84"
+          },
+          {
+            "label": "_sponsoredBetAmount",
+            "offset": 0,
+            "slot": "258",
+            "type": "t_uint256",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:87"
+          },
+          {
+            "label": "_sponsoredParticipants",
+            "offset": 0,
+            "slot": "259",
+            "type": "t_mapping(t_address,t_address)",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:90"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(FlightDelayMarket)8473": {
+            "label": "contract FlightDelayMarket",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IRegistry)12634": {
+            "label": "contract IRegistry",
+            "numberOfBytes": "20"
+          },
+          "t_contract(LPWallet)10122": {
+            "label": "contract LPWallet",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_contract(FlightDelayMarket)8473)": {
+            "label": "mapping(bytes32 => contract FlightDelayMarket)",
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "802e6a20a33bc3cb774b1bbdd5f8f605e4a69dbabce8bbd587efe4a2549db74f": {
+      "address": "0xbF1581C3b1d1a348cb6c90C7946Ef21Da3313e94",
+      "txHash": "0x9fcc49864c9767285f83824bf1f8016f29b1d4d5b13edc1170883b316d2c3200",
+      "layout": {
+        "solcVersion": "0.8.17",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          },
+          {
+            "label": "INITIAL_CHAIN_ID",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:38"
+          },
+          {
+            "label": "INITIAL_DOMAIN_SEPARATOR",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_bytes32",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:41"
+          },
+          {
+            "label": "isTrusted",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "Trustus",
+            "src": "contracts/Trustus.sol:49"
+          },
+          {
+            "label": "_registry",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_contract(IRegistry)12632",
+            "contract": "RegistryMixin",
+            "src": "contracts/utils/RegistryMixin.sol:12"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:169"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "205",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol:111"
+          },
+          {
+            "label": "_marketUniqueIdCounter",
+            "offset": 0,
+            "slot": "255",
+            "type": "t_uint256",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:78"
+          },
+          {
+            "label": "_markets",
+            "offset": 0,
+            "slot": "256",
+            "type": "t_mapping(t_bytes32,t_contract(FlightDelayMarket)8473)",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:81"
+          },
+          {
+            "label": "_lpWallet",
+            "offset": 0,
+            "slot": "257",
+            "type": "t_contract(LPWallet)10120",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:84"
+          },
+          {
+            "label": "_sponsoredBetAmount",
+            "offset": 0,
+            "slot": "258",
+            "type": "t_uint256",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:87"
+          },
+          {
+            "label": "_sponsoredParticipants",
+            "offset": 0,
+            "slot": "259",
+            "type": "t_mapping(t_address,t_address)",
+            "contract": "FlightInsurance",
+            "src": "contracts/FlightInsurance.sol:90"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(FlightDelayMarket)8473": {
+            "label": "contract FlightDelayMarket",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IRegistry)12632": {
+            "label": "contract IRegistry",
+            "numberOfBytes": "20"
+          },
+          "t_contract(LPWallet)10120": {
+            "label": "contract LPWallet",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_contract(FlightDelayMarket)8473)": {
             "label": "mapping(bytes32 => contract FlightDelayMarket)",
             "numberOfBytes": "32"
           },

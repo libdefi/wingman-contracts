@@ -14,17 +14,17 @@ async function counterTest() {
   const Counter = await ethers.getContractFactory("CounterERC2771");
   const counter = await Counter.deploy(GELATO_RELAY_ERC2771);
 
-  console.log("Counter deployed at", counter.address);
+  console.log("Counter deployed at", counter.target);
 
   const { data } = await counter
     .connect(signer)
-    .populateTransaction
-    .incrementContext();
+    .incrementContext
+    .populateTransaction();
 
   const { taskId } = await relay.sponsoredCallERC2771(
     {
-      chainId: ethers.provider.network.chainId,
-      target: counter.address,
+      chainId: (await ethers.provider.getNetwork()).chainId,
+      target: counter.target as string,
       data: data!,
       user: await signer.getAddress(),
     },
